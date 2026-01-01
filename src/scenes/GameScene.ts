@@ -11,7 +11,6 @@ export default class GameScene extends Phaser.Scene {
     private scoreBg!: Phaser.GameObjects.Graphics;
     private heightScore = 0; // Score from climbing
     private itemScore = 0;   // Score from items
-    private displayScore = 0;
 
     // Toggle Control
     private moveDirection = 1;
@@ -21,6 +20,7 @@ export default class GameScene extends Phaser.Scene {
 
     // Generation Logic
     private highestY = 0;
+    private lastPlatformCount = 1; // Track last count
 
     // State
     private isGameOver = false;
@@ -37,10 +37,10 @@ export default class GameScene extends Phaser.Scene {
         this.isGameOver = false;
         this.heightScore = 0;
         this.itemScore = 0;
-        this.displayScore = 0;
         this.moveDirection = 1;
         this.isFlying = false;
         this.flyTimer = 0;
+        this.lastPlatformCount = 1;
 
         // --- Assets ---
         this.createAssets();
@@ -212,6 +212,7 @@ export default class GameScene extends Phaser.Scene {
              g.beginPath(); g.moveTo(35, 20); g.lineTo(45, 18); g.strokePath();
              g.beginPath(); g.moveTo(35, 22); g.lineTo(45, 24); g.strokePath();
              g.lineStyle(3, 0xFFA500, 1.0);
+             // Fixed crash with lineTo
              g.beginPath(); g.moveTo(10, 50); g.lineTo(0, 45); g.lineTo(5, 35); g.strokePath();
              g.generateTexture('player_side', 50, 64);
         }
@@ -233,7 +234,22 @@ export default class GameScene extends Phaser.Scene {
 
     private spawnFloor(y: number, forceCount?: number, forceType?: string) {
         const width = this.scale.width;
-        const count = forceCount || Phaser.Math.Between(2, 5);
+
+        let count = 1;
+        if (forceCount !== undefined) {
+            count = forceCount;
+        } else {
+            // Logic: 3 -> 1, 1 -> 2, Else -> Random(1,3)
+            if (this.lastPlatformCount === 3) {
+                count = 1;
+            } else if (this.lastPlatformCount === 1) {
+                count = 2;
+            } else {
+                count = Phaser.Math.Between(1, 3);
+            }
+        }
+        this.lastPlatformCount = count;
+
         const segmentWidth = width / count;
 
         for (let i = 0; i < count; i++) {
@@ -313,14 +329,10 @@ export default class GameScene extends Phaser.Scene {
     }
 
     private collectItem(player: any, item: any) {
-        // Hide item
         item.disableBody(true, true);
-
-        // Add Score
         const val = item.getData('value');
         this.itemScore += val;
 
-        // Floating Text
         const text = this.add.text(item.x, item.y, `+${val}`, {
             fontSize: '24px',
             color: '#FFD700',
@@ -377,7 +389,6 @@ export default class GameScene extends Phaser.Scene {
         // --- Infinite Generation & Cleanup ---
         const cameraBottom = this.cameras.main.scrollY + this.scale.height;
 
-        // Recycle Platforms
         this.platforms.children.iterate((p: any) => {
             if (p.active && p.y > cameraBottom + 100) {
                 this.platforms.killAndHide(p);
@@ -386,7 +397,6 @@ export default class GameScene extends Phaser.Scene {
             return true;
         });
 
-        // Recycle Items
         this.items.children.iterate((i: any) => {
              if (i.active && i.y > cameraBottom + 100) {
                  this.items.killAndHide(i);
@@ -411,7 +421,6 @@ export default class GameScene extends Phaser.Scene {
             }
         }
 
-        // Total Score
         const totalScore = this.heightScore + this.itemScore;
         this.scoreText.setText(`${totalScore}`);
 
@@ -474,7 +483,7 @@ export default class GameScene extends Phaser.Scene {
         const { width, height } = this.scale;
 
         const container = this.add.container(width * 0.5, height * 0.5).setDepth(100).setScrollFactor(0);
-        const bg = this.add.rectangle(0, 0, width, height, 0x000000, 0.85);
+        const bg = this.add.rectangle(0, 0, width, height, 0x000000, 0.85).setInteractive(); // Block click-through
 
         const cardW = 500;
         const cardH = 400;
@@ -520,11 +529,17 @@ export default class GameScene extends Phaser.Scene {
         }).setOrigin(0.5);
 
         btn.add([btnBg, btnText]);
-        const hitArea = this.add.rectangle(0, btnY, btnW, btnH, 0x000000, 0).setInteractive({ cursor: 'pointer' });
+
+        // Ensure hit area is set correctly and interactive
+        const hitArea = this.add.rectangle(0, btnY, btnW, btnH, 0x000000, 0)
+            .setInteractive({ useHandCursor: true });
+
         hitArea.on('pointerdown', () => {
+            console.log('Exit button clicked');
             this.scene.start('LobbyScene');
         });
 
+        // Add to container in order. Hit area last (top)
         container.add([bg, card, title, scoreLabel, scoreVal, btn, hitArea]);
     }
 }
