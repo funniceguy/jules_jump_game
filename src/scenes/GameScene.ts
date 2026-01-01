@@ -212,7 +212,7 @@ export default class GameScene extends Phaser.Scene {
              g.beginPath(); g.moveTo(35, 20); g.lineTo(45, 18); g.strokePath();
              g.beginPath(); g.moveTo(35, 22); g.lineTo(45, 24); g.strokePath();
              g.lineStyle(3, 0xFFA500, 1.0);
-             g.beginPath(); g.moveTo(10, 50); g.bezierCurveTo(0, 50, 0, 40, 5, 35); g.strokePath();
+             g.beginPath(); g.moveTo(10, 50); g.lineTo(0, 45); g.lineTo(5, 35); g.strokePath();
              g.generateTexture('player_side', 50, 64);
         }
         // Player Jump
