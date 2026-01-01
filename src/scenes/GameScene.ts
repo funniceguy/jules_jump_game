@@ -94,8 +94,11 @@ export default class GameScene extends Phaser.Scene {
         this.physics.add.overlap(this.player, this.items, this.collectItem, undefined, this);
 
         // --- Camera ---
-        this.cameras.main.startFollow(this.player, true, 0, 0.05, 0, 0);
-        this.cameras.main.setDeadzone(0, 400);
+        // Increase lerpY to 0.2 for faster tracking.
+        // Follow offset (0, 200) helps keep player lower in the frame.
+        this.cameras.main.startFollow(this.player, true, 0, 0.2, 0, 200);
+        // Reduce Deadzone height to prevent player from moving too far up before camera moves
+        this.cameras.main.setDeadzone(0, 100);
 
         // --- UI & Controls ---
         this.createUI();
@@ -464,8 +467,17 @@ export default class GameScene extends Phaser.Scene {
         }
 
         const width = this.scale.width;
-        if (this.player.x < 0) this.player.x = width;
-        else if (this.player.x > width) this.player.x = 0;
+        if (this.player.x < 0) {
+            this.player.x = width; // Wrap
+            this.cameras.main.scrollX = 0; // Ensure camera X stays 0
+        }
+        else if (this.player.x > width) {
+            this.player.x = 0; // Wrap
+            this.cameras.main.scrollX = 0;
+        }
+
+        // Safety: Ensure camera X is always 0
+        this.cameras.main.scrollX = 0;
 
         // --- Flight Logic ---
         if (this.isFlying) {
@@ -517,7 +529,7 @@ export default class GameScene extends Phaser.Scene {
         const startY = this.scale.height - 300;
         let hScore = 0;
         if (this.player.y < startY) {
-            hScore = Math.floor((startY - this.player.y) / 100);
+            hScore = Math.floor((startY - this.player.y) / 200); // Reduced Score (was 100)
             if (hScore > this.heightScore) {
                 this.heightScore = hScore;
             }
@@ -549,8 +561,8 @@ export default class GameScene extends Phaser.Scene {
 
         this.timerText.setText(`${minStr}:${secStr}:${msStr}`);
 
-        // Warning Color if low time (< 30s)
-        if (totalSeconds < 30) {
+        // Warning Color if low time (< 60s)
+        if (totalSeconds < 60) {
             this.timerText.setColor('#ff0000');
         } else {
             this.timerText.setColor('#ffffff');
