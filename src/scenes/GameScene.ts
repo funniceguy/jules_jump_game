@@ -5,7 +5,6 @@ export default class GameScene extends Phaser.Scene {
     private player!: Phaser.Types.Physics.Arcade.SpriteWithDynamicBody;
     private platforms!: Phaser.Physics.Arcade.Group;
     private items!: Phaser.Physics.Arcade.Group;
-    // Removed unused cursors
 
     // UI & Controls
     private scoreText!: Phaser.GameObjects.Text;
@@ -64,8 +63,7 @@ export default class GameScene extends Phaser.Scene {
         // Progression Logic: Target = Stage * 1000
         this.targetScore = data.currentStage * 1000;
 
-        // --- Assets ---
-        this.createAssets();
+        // Assets are preloaded in PreloadScene.ts
 
         // --- Groups ---
         this.platforms = this.physics.add.group({
@@ -116,74 +114,11 @@ export default class GameScene extends Phaser.Scene {
 
         // Keyboard
         if (this.input.keyboard) {
-            // this.cursors = this.input.keyboard.createCursorKeys(); // Removed unused assignment
             this.input.keyboard.on('keydown-SPACE', () => this.handleInput());
         }
     }
 
-    private createAssets() {
-        const w = 100; const h = 30;
-        if (!this.textures.exists('platform_wood')) {
-            const g = this.make.graphics({x:0, y:0});
-            g.fillStyle(0x8B4513, 1.0); g.fillRect(0, 0, w, h);
-            g.lineStyle(2, 0xDAA520, 1.0); g.strokeRect(0,0,w,h);
-            g.generateTexture('platform_wood', w, h);
-        }
-        if (!this.textures.exists('platform_rubber')) {
-            const g = this.make.graphics({x:0, y:0});
-            g.fillStyle(0xFF69B4, 1.0); g.fillRoundedRect(0, 0, w, h, 15);
-            g.generateTexture('platform_rubber', w, h);
-        }
-        if (!this.textures.exists('platform_electric')) {
-            const g = this.make.graphics({x:0, y:0});
-            g.fillStyle(0x2F4F4F, 1.0); g.fillRect(0, 0, w, h);
-            g.fillStyle(0xFFFF00, 1.0); g.fillTriangle(10,5,30,25,50,5);
-            g.generateTexture('platform_electric', w, h);
-        }
-        if (!this.textures.exists('platform_plasma')) {
-            const g = this.make.graphics({x:0, y:0});
-            g.fillStyle(0x4B0082, 1.0); g.fillRect(0, 0, w, h);
-            g.lineStyle(4, 0x00FFFF, 1.0); g.strokeRect(0,0,w,h);
-            g.generateTexture('platform_plasma', w, h);
-        }
-        // Items
-        if (!this.textures.exists('item_fish')) {
-            const g = this.make.graphics({x:0, y:0});
-            g.fillStyle(0x4682B4, 1.0); g.fillEllipse(20, 20, 30, 15);
-            g.generateTexture('item_fish', 50, 40);
-        }
-        if (!this.textures.exists('item_milk')) {
-            const g = this.make.graphics({x:0, y:0});
-            g.fillStyle(0xFFFFFF, 1.0); g.fillRect(10, 15, 20, 25);
-            g.generateTexture('item_milk', 40, 40);
-        }
-        if (!this.textures.exists('item_cookie')) {
-            const g = this.make.graphics({x:0, y:0});
-            g.fillStyle(0xD2691E, 1.0); g.fillCircle(20, 20, 15);
-            g.generateTexture('item_cookie', 40, 40);
-        }
-        if (!this.textures.exists('item_flower')) {
-            const g = this.make.graphics({x:0, y:0});
-            g.fillStyle(0xFF69B4, 1.0); g.fillCircle(20, 20, 8);
-            g.generateTexture('item_flower', 40, 40);
-        }
-        if (!this.textures.exists('item_gem')) {
-            const g = this.make.graphics({x:0, y:0});
-            g.fillStyle(0x00FFFF, 1.0); g.fillTriangle(20,5,35,15,5,15);
-            g.generateTexture('item_gem', 40, 40);
-        }
-        // Player
-        if (!this.textures.exists('player_side')) {
-             const g = this.make.graphics({ x: 0, y: 0});
-             g.fillStyle(0xFFA500, 1.0); g.fillRect(10, 25, 30, 35); g.fillCircle(25, 20, 15);
-             g.generateTexture('player_side', 50, 64);
-        }
-        if (!this.textures.exists('player_jump')) {
-             const g = this.make.graphics({ x: 0, y: 0});
-             g.fillStyle(0xFFA500, 1.0); g.fillRect(10, 25, 30, 40); g.fillCircle(25, 20, 15);
-             g.generateTexture('player_jump', 50, 75);
-        }
-    }
+    // Removed createAssets() as it is now in PreloadScene
 
     private spawnFloor(y: number, forceCount?: number, forceType?: string, isStartPlatform: boolean = false) {
         const width = this.scale.width;
@@ -238,7 +173,7 @@ export default class GameScene extends Phaser.Scene {
             platform.setData('type', type);
             platform.clearTint();
 
-            // Spawn Logic: Item (30%) - Removed Enemy spawn
+            // Spawn Logic: Item (30%)
             if (!isStartPlatform) {
                 const rand = Math.random();
                 if (rand < 0.3) {
@@ -298,6 +233,7 @@ export default class GameScene extends Phaser.Scene {
     private performDash() {
         if (this.isGameOver || this.isGameClear || this.isDashing) return;
         this.isDashing = true;
+        this.isFlying = false; // Dash cancels fly? Maybe not. Let's keep it simple.
         this.dashTimer = 200;
     }
 
@@ -383,7 +319,15 @@ export default class GameScene extends Phaser.Scene {
         const seconds = totalSeconds % 60;
         const ms = Math.floor((this.timeLeft % 1000) / 10);
         this.timerText.setText(`${minutes.toString().padStart(2,'0')}:${seconds.toString().padStart(2,'0')}:${ms.toString().padStart(2,'0')}`);
-        if (totalSeconds < 60) this.timerText.setColor('#ff0000'); else this.timerText.setColor('#ffffff');
+
+        // Critical time effect
+        if (totalSeconds < 10) {
+            this.timerText.setColor('#ff4757');
+            this.timerText.setFontSize(32);
+        } else {
+            this.timerText.setColor('#ffffff');
+            this.timerText.setFontSize(28);
+        }
     }
 
     private handleCollision(player: any, platform: any) {
@@ -410,66 +354,137 @@ export default class GameScene extends Phaser.Scene {
     private createUI() {
         const { width } = this.scale;
 
-        // Score
+        // Score (Left)
         this.scoreBg = this.add.graphics();
-        this.scoreBg.fillStyle(0xffffff, 0.9);
-        this.scoreBg.fillRoundedRect(40, 40, 300, 50, 25);
+        this.scoreBg.fillStyle(0x000000, 0.4);
+        this.scoreBg.fillRoundedRect(20, 20, 240, 60, 20);
         this.scoreBg.setScrollFactor(0).setDepth(10);
-        this.scoreText = this.add.text(190, 65, '0', { fontSize: '20px', color: '#4285f4', fontStyle: 'bold' }).setOrigin(0.5).setScrollFactor(0).setDepth(11);
+        this.scoreText = this.add.text(140, 50, 'Score: 0', {
+            fontFamily: 'Fredoka One', fontSize: '24px', color: '#f1f2f6'
+        }).setOrigin(0.5).setScrollFactor(0).setDepth(11);
 
-        // Timer
+        // Timer (Right)
         this.timerBg = this.add.graphics();
-        this.timerBg.fillStyle(0x000000, 0.5);
-        this.timerBg.fillRoundedRect(width/2 - 90, 40, 180, 50, 25);
+        this.timerBg.fillStyle(0x000000, 0.4);
+        this.timerBg.fillRoundedRect(width - 200, 20, 180, 60, 20);
         this.timerBg.setScrollFactor(0).setDepth(10);
-        this.timerText = this.add.text(width/2, 65, '00:00:00', { fontSize: '24px', color: '#fff', fontFamily: 'monospace' }).setOrigin(0.5).setScrollFactor(0).setDepth(11);
+        this.timerText = this.add.text(width - 110, 50, '00:00:00', {
+            fontFamily: 'Fredoka One', fontSize: '28px', color: '#fff'
+        }).setOrigin(0.5).setScrollFactor(0).setDepth(11);
     }
 
     private createControls() {
         const { width, height } = this.scale;
-        const btnHeight = 150; const btnY = height - btnHeight;
+        const btnH = 120;
+        const btnY = height - 80;
 
-        const jumpBtn = this.add.rectangle(0, btnY, width/2, btnHeight, 0x00ff00, 0.2).setOrigin(0,0).setScrollFactor(0).setDepth(20).setInteractive();
-        this.add.text(width*0.25, btnY+btnHeight/2, 'JUMP', { fontSize:'40px', fontStyle:'bold' }).setOrigin(0.5).setScrollFactor(0).setDepth(21);
-        jumpBtn.on('pointerdown', () => { this.performJump(); jumpBtn.setFillStyle(0x00ff00, 0.4); });
-        jumpBtn.on('pointerup', () => jumpBtn.setFillStyle(0x00ff00, 0.2));
-        jumpBtn.on('pointerout', () => jumpBtn.setFillStyle(0x00ff00, 0.2));
+        // Left Area (JUMP)
+        const jumpZone = this.add.rectangle(width * 0.25, btnY, width/2 - 20, btnH, 0x2ecc71, 0.8)
+            .setScrollFactor(0).setDepth(20).setInteractive();
+        this.add.text(width * 0.25, btnY, 'JUMP', {
+            fontFamily: 'Fredoka One', fontSize:'40px'
+        }).setOrigin(0.5).setScrollFactor(0).setDepth(21);
 
-        const dashBtn = this.add.rectangle(width/2, btnY, width/2, btnHeight, 0x00ffff, 0.2).setOrigin(0,0).setScrollFactor(0).setDepth(20).setInteractive();
-        this.add.text(width*0.75, btnY+btnHeight/2, 'DASH', { fontSize:'40px', fontStyle:'bold' }).setOrigin(0.5).setScrollFactor(0).setDepth(21);
-        dashBtn.on('pointerdown', () => { this.performDash(); dashBtn.setFillStyle(0x00ffff, 0.4); });
-        dashBtn.on('pointerup', () => dashBtn.setFillStyle(0x00ffff, 0.2));
-        dashBtn.on('pointerout', () => dashBtn.setFillStyle(0x00ffff, 0.2));
+        jumpZone.on('pointerdown', () => { this.performJump(); jumpZone.setAlpha(1); });
+        jumpZone.on('pointerup', () => jumpZone.setAlpha(0.8));
+        jumpZone.on('pointerout', () => jumpZone.setAlpha(0.8));
+
+        // Right Area (DASH)
+        const dashZone = this.add.rectangle(width * 0.75, btnY, width/2 - 20, btnH, 0x00d2d3, 0.8)
+            .setScrollFactor(0).setDepth(20).setInteractive();
+        this.add.text(width * 0.75, btnY, 'DASH', {
+            fontFamily: 'Fredoka One', fontSize:'40px'
+        }).setOrigin(0.5).setScrollFactor(0).setDepth(21);
+
+        dashZone.on('pointerdown', () => { this.performDash(); dashZone.setAlpha(1); });
+        dashZone.on('pointerup', () => dashZone.setAlpha(0.8));
+        dashZone.on('pointerout', () => dashZone.setAlpha(0.8));
     }
 
     private showGameOver(isTimeOver: boolean) {
         if (this.isGameOver) return;
         this.isGameOver = true;
         this.physics.pause();
-        // Simple GameOver UI
-        const { width, height } = this.scale;
-        this.add.rectangle(width/2, height/2, width, height, 0x000000, 0.8).setScrollFactor(0).setDepth(100).setInteractive();
-        this.add.text(width/2, height/2 - 50, isTimeOver ? 'Time Over' : 'Game Over', { fontSize: '64px', color: '#f00' }).setOrigin(0.5).setScrollFactor(0).setDepth(101);
 
-        const btn = this.add.rectangle(width/2, height/2 + 100, 200, 60, 0xffffff).setScrollFactor(0).setDepth(101).setInteractive();
-        this.add.text(width/2, height/2 + 100, 'Exit', { fontSize: '32px', color: '#000' }).setOrigin(0.5).setScrollFactor(0).setDepth(102);
+        const { width, height } = this.scale;
+
+        // Modal Background
+        const modal = this.add.container(width/2, height/2).setScrollFactor(0).setDepth(100);
+
+        const bg = this.add.graphics();
+        bg.fillStyle(0x2f3542, 0.95);
+        bg.fillRoundedRect(-300, -200, 600, 400, 30);
+        bg.lineStyle(6, 0xff4757, 1);
+        bg.strokeRoundedRect(-300, -200, 600, 400, 30);
+
+        const title = this.add.text(0, -100, isTimeOver ? 'TIME UP' : 'GAME OVER', {
+            fontFamily: 'Fredoka One', fontSize: '64px', color: '#ff4757'
+        }).setOrigin(0.5);
+
+        const score = this.add.text(0, 0, `Score: ${this.heightScore + this.itemScore}`, {
+             fontFamily: 'Nunito', fontSize: '40px', color: '#fff'
+        }).setOrigin(0.5);
+
+        // Exit Button
+        const btn = this.add.container(0, 120);
+        const btnBg = this.add.graphics();
+        btnBg.fillStyle(0xffffff, 1);
+        btnBg.fillRoundedRect(-100, -30, 200, 60, 20);
+        const btnTxt = this.add.text(0, 0, 'EXIT', { fontFamily: 'Fredoka One', fontSize: '30px', color: '#2f3542' }).setOrigin(0.5);
+        btn.add([btnBg, btnTxt]);
+        btn.setSize(200, 60);
+        btn.setInteractive(new Phaser.Geom.Rectangle(-100, -30, 200, 60), Phaser.Geom.Rectangle.Contains);
         btn.on('pointerdown', () => this.scene.start('LobbyScene'));
+
+        modal.add([bg, title, score, btn]);
+        modal.setScale(0);
+        this.tweens.add({ targets: modal, scaleX: 1, scaleY: 1, duration: 300, ease: 'Back.out' });
     }
 
     private showGameClear() {
         if (this.isGameClear) return;
         this.isGameClear = true;
         this.physics.pause();
-
-        // Update Data
         GameData.getInstance().completeStage();
 
         const { width, height } = this.scale;
-        this.add.rectangle(width/2, height/2, width, height, 0x000000, 0.8).setScrollFactor(0).setDepth(100).setInteractive();
-        this.add.text(width/2, height/2 - 50, 'Stage Clear!', { fontSize: '64px', color: '#ff0' }).setOrigin(0.5).setScrollFactor(0).setDepth(101);
 
-        const btn = this.add.rectangle(width/2, height/2 + 100, 250, 60, 0xffffff).setScrollFactor(0).setDepth(101).setInteractive();
-        this.add.text(width/2, height/2 + 100, 'Next Stage', { fontSize: '32px', color: '#000' }).setOrigin(0.5).setScrollFactor(0).setDepth(102);
+        const modal = this.add.container(width/2, height/2).setScrollFactor(0).setDepth(100);
+
+        const bg = this.add.graphics();
+        bg.fillStyle(0x2f3542, 0.95);
+        bg.fillRoundedRect(-300, -200, 600, 400, 30);
+        bg.lineStyle(6, 0xf1c40f, 1);
+        bg.strokeRoundedRect(-300, -200, 600, 400, 30);
+
+        const title = this.add.text(0, -100, 'STAGE CLEAR!', {
+            fontFamily: 'Fredoka One', fontSize: '60px', color: '#f1c40f'
+        }).setOrigin(0.5);
+
+        // Stars/Particles
+        for(let i=0; i<10; i++) {
+             const s = this.add.text(Phaser.Math.Between(-200, 200), Phaser.Math.Between(-150, -50), '★', { fontSize: '40px', color: '#ffeaa7' });
+             modal.add(s);
+             this.tweens.add({ targets: s, angle: 360, duration: 2000, repeat: -1 });
+        }
+
+        const score = this.add.text(0, 20, `Final Score: ${this.heightScore + this.itemScore}`, {
+             fontFamily: 'Nunito', fontSize: '32px', color: '#fff'
+        }).setOrigin(0.5);
+
+        // Next Button
+        const btn = this.add.container(0, 120);
+        const btnBg = this.add.graphics();
+        btnBg.fillStyle(0x2ed573, 1);
+        btnBg.fillRoundedRect(-120, -35, 240, 70, 25);
+        const btnTxt = this.add.text(0, 0, 'NEXT LEVEL', { fontFamily: 'Fredoka One', fontSize: '30px', color: '#fff' }).setOrigin(0.5);
+        btn.add([btnBg, btnTxt]);
+        btn.setSize(240, 70);
+        btn.setInteractive(new Phaser.Geom.Rectangle(-120, -35, 240, 70), Phaser.Geom.Rectangle.Contains);
         btn.on('pointerdown', () => this.scene.start('LobbyScene'));
+
+        modal.add([bg, title, score, btn]);
+        modal.setScale(0);
+        this.tweens.add({ targets: modal, scaleX: 1, scaleY: 1, duration: 500, ease: 'Bounce.out' });
     }
 }

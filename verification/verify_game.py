@@ -13,23 +13,24 @@ def verify_frontend():
 
             # Wait for canvas
             page.wait_for_selector("canvas")
-            print("Canvas found. Waiting for render...")
-            time.sleep(3) # Wait for Phaser scene to create
+            print("Canvas found. Waiting for Preload & Render...")
+            time.sleep(5) # Wait for PreloadScene and LobbyScene
 
-            # Screenshot Lobby
-            page.screenshot(path="verification/lobby.png")
-            print("Lobby screenshot saved.")
+            # Screenshot Lobby (Should see "JUMP GAME" and "PLAY NOW")
+            page.screenshot(path="verification/lobby_cute.png")
+            print("Lobby screenshot saved (verification/lobby_cute.png).")
 
-            # Click Start Button (approx coords: 360, 768)
-            print("Clicking Start Game...")
-            page.mouse.click(360, 768)
+            # Click Start Button (Center, approx 65% height)
+            # 720/2 = 360, 1280*0.65 = 832
+            print("Clicking PLAY NOW...")
+            page.mouse.click(360, 832)
 
             # Wait for transition
-            time.sleep(2)
+            time.sleep(3)
 
-            # Screenshot Game
-            page.screenshot(path="verification/game_verified.png")
-            print("Game screenshot saved to verification/game_verified.png")
+            # Screenshot Game (Should see Timer on Top Right)
+            page.screenshot(path="verification/game_cute.png")
+            print("Game screenshot saved (verification/game_cute.png).")
 
         except Exception as e:
             print(f"Error: {e}")
