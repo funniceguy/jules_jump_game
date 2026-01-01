@@ -22,10 +22,6 @@ export class GameData {
     public currentStage: number = 1;
     public unlockedCardCount: number = 0;
 
-    // Stats
-    public playerMaxHP: number = 100;
-    public weaponLevel: number = 1;
-
     public storyCards: StoryCard[] = [];
     public achievements: Achievement[] = [];
 
@@ -74,13 +70,9 @@ export class GameData {
 
     public completeStage() {
         this.currentStage++;
-        // Simple scaling
-        this.playerMaxHP += 10;
-        this.weaponLevel++;
 
-        // Unlock a generic card for clearing stage?
-        // For simplicity, let's unlock next card index
-        const cardToUnlock = this.storyCards[this.currentStage - 1]; // e.g. Stage 2 -> index 1 -> card_2
+        // Unlock a generic card for clearing stage
+        const cardToUnlock = this.storyCards[this.currentStage - 1];
         if (cardToUnlock) {
             this.unlockCard(cardToUnlock.id);
         }

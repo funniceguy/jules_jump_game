@@ -13,22 +13,24 @@ export default class LobbyScene extends Phaser.Scene {
         // 1. Background
         if (!this.textures.exists('lobby_bg')) {
             const canvas = this.textures.createCanvas('lobby_bg', width, height);
-            const ctx = canvas.getContext();
-            const grd = ctx.createLinearGradient(0, 0, 0, height);
-            grd.addColorStop(0, '#000033');
-            grd.addColorStop(1, '#330033');
-            ctx.fillStyle = grd;
-            ctx.fillRect(0, 0, width, height);
-            ctx.fillStyle = '#ffffff';
-            for (let i = 0; i < 100; i++) {
-                const x = Math.random() * width;
-                const y = Math.random() * height;
-                const r = Math.random() * 2;
-                ctx.beginPath();
-                ctx.arc(x, y, r, 0, Math.PI * 2);
-                ctx.fill();
+            if (canvas) {
+                const ctx = canvas.getContext();
+                const grd = ctx.createLinearGradient(0, 0, 0, height);
+                grd.addColorStop(0, '#000033');
+                grd.addColorStop(1, '#330033');
+                ctx.fillStyle = grd;
+                ctx.fillRect(0, 0, width, height);
+                ctx.fillStyle = '#ffffff';
+                for (let i = 0; i < 100; i++) {
+                    const x = Math.random() * width;
+                    const y = Math.random() * height;
+                    const r = Math.random() * 2;
+                    ctx.beginPath();
+                    ctx.arc(x, y, r, 0, Math.PI * 2);
+                    ctx.fill();
+                }
+                canvas.refresh();
             }
-            canvas.refresh();
         }
         this.add.image(width * 0.5, height * 0.5, 'lobby_bg').setOrigin(0.5);
 

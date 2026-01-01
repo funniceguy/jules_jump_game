@@ -16,7 +16,7 @@ const config: Phaser.Types.Core.GameConfig = {
     physics: {
         default: 'arcade',
         arcade: {
-            gravity: { y: 1500 }, // Increased gravity for taller screen/better feel
+            gravity: { x: 0, y: 1500 }, // Increased gravity for taller screen/better feel
             debug: false
         },
     },

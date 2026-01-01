@@ -5,9 +5,7 @@ export default class GameScene extends Phaser.Scene {
     private player!: Phaser.Types.Physics.Arcade.SpriteWithDynamicBody;
     private platforms!: Phaser.Physics.Arcade.Group;
     private items!: Phaser.Physics.Arcade.Group;
-    private enemies!: Phaser.Physics.Arcade.Group;
-    private bullets!: Phaser.Physics.Arcade.Group;
-    private cursors!: Phaser.Types.Input.Keyboard.CursorKeys;
+    // Removed unused cursors
 
     // UI & Controls
     private scoreText!: Phaser.GameObjects.Text;
@@ -23,7 +21,7 @@ export default class GameScene extends Phaser.Scene {
 
     // Configuration
     private readonly platformVerticalDistance = 220;
-    private readonly targetScore = 10000;
+    private targetScore = 1000;
     private timeLeft = 90000;
 
     // Generation Logic
@@ -41,8 +39,6 @@ export default class GameScene extends Phaser.Scene {
     private canDoubleJump = false;
     private isDashing = false;
     private dashTimer = 0;
-    private shootTimer = 0;
-    private playerHP = 100;
 
     constructor() {
         super('GameScene');
@@ -64,8 +60,9 @@ export default class GameScene extends Phaser.Scene {
         this.isDashing = false;
         this.dashTimer = 0;
         this.timeLeft = 90000;
-        this.shootTimer = 0;
-        this.playerHP = data.playerMaxHP;
+
+        // Progression Logic: Target = Stage * 1000
+        this.targetScore = data.currentStage * 1000;
 
         // --- Assets ---
         this.createAssets();
@@ -81,17 +78,6 @@ export default class GameScene extends Phaser.Scene {
             runChildUpdate: false,
             allowGravity: false,
             immovable: true
-        });
-
-        this.enemies = this.physics.add.group({
-            runChildUpdate: false,
-            allowGravity: false,
-            immovable: true
-        });
-
-        this.bullets = this.physics.add.group({
-            runChildUpdate: true, // Bullets move
-            allowGravity: false
         });
 
         // Initialize First Floor
@@ -112,10 +98,6 @@ export default class GameScene extends Phaser.Scene {
         // Physics
         this.physics.add.collider(this.player, this.platforms, this.handleCollision, undefined, this);
         this.physics.add.overlap(this.player, this.items, this.collectItem, undefined, this);
-        // Player vs Enemy
-        this.physics.add.overlap(this.player, this.enemies, this.hitEnemyBody, undefined, this);
-        // Bullet vs Enemy
-        this.physics.add.overlap(this.bullets, this.enemies, this.bulletHitEnemy, undefined, this);
 
         // --- Camera ---
         this.cameras.main.startFollow(this.player, true, 0, 0.2, 0, 200);
@@ -126,7 +108,7 @@ export default class GameScene extends Phaser.Scene {
         this.createControls();
 
         // Input Listener
-        this.input.on('pointerdown', (pointer: Phaser.Input.Pointer, gameObjects: any[]) => {
+        this.input.on('pointerdown', (_pointer: Phaser.Input.Pointer, gameObjects: any[]) => {
             if (gameObjects.length === 0) {
                 this.handleInput();
             }
@@ -134,93 +116,70 @@ export default class GameScene extends Phaser.Scene {
 
         // Keyboard
         if (this.input.keyboard) {
-            this.cursors = this.input.keyboard.createCursorKeys();
+            // this.cursors = this.input.keyboard.createCursorKeys(); // Removed unused assignment
             this.input.keyboard.on('keydown-SPACE', () => this.handleInput());
         }
     }
 
     private createAssets() {
-        // Reuse existing assets...
-        // Add Enemy Asset
-        if (!this.textures.exists('enemy_red')) {
-            const g = this.make.graphics({x:0, y:0, add: false});
-            g.fillStyle(0xff0000, 1.0);
-            g.fillCircle(20, 20, 20);
-            g.fillStyle(0x000000, 1.0); // Eyes
-            g.fillCircle(12, 15, 3);
-            g.fillCircle(28, 15, 3);
-            g.generateTexture('enemy_red', 40, 40);
-        }
-        // Add Bullet Asset
-        if (!this.textures.exists('bullet')) {
-            const g = this.make.graphics({x:0, y:0, add: false});
-            g.fillStyle(0xffff00, 1.0);
-            g.fillCircle(5, 5, 5);
-            g.generateTexture('bullet', 10, 10);
-        }
-        // ... (Keep existing platform/item asset gen if needed, or assume they persist)
-        // For safety, let's just assume they exist from previous runs or add the check if missing.
-        // I will trust the previous code block context but adding them is safer.
-        // Let's assume the previous asset creation code is still valid if not overwritten.
-        // Actually, since I am overwriting the file, I MUST include all asset generation.
         const w = 100; const h = 30;
         if (!this.textures.exists('platform_wood')) {
-            const g = this.make.graphics({x:0, y:0, add: false});
+            const g = this.make.graphics({x:0, y:0});
             g.fillStyle(0x8B4513, 1.0); g.fillRect(0, 0, w, h);
             g.lineStyle(2, 0xDAA520, 1.0); g.strokeRect(0,0,w,h);
             g.generateTexture('platform_wood', w, h);
         }
         if (!this.textures.exists('platform_rubber')) {
-            const g = this.make.graphics({x:0, y:0, add: false});
+            const g = this.make.graphics({x:0, y:0});
             g.fillStyle(0xFF69B4, 1.0); g.fillRoundedRect(0, 0, w, h, 15);
             g.generateTexture('platform_rubber', w, h);
         }
         if (!this.textures.exists('platform_electric')) {
-            const g = this.make.graphics({x:0, y:0, add: false});
+            const g = this.make.graphics({x:0, y:0});
             g.fillStyle(0x2F4F4F, 1.0); g.fillRect(0, 0, w, h);
             g.fillStyle(0xFFFF00, 1.0); g.fillTriangle(10,5,30,25,50,5);
             g.generateTexture('platform_electric', w, h);
         }
         if (!this.textures.exists('platform_plasma')) {
-            const g = this.make.graphics({x:0, y:0, add: false});
+            const g = this.make.graphics({x:0, y:0});
             g.fillStyle(0x4B0082, 1.0); g.fillRect(0, 0, w, h);
             g.lineStyle(4, 0x00FFFF, 1.0); g.strokeRect(0,0,w,h);
             g.generateTexture('platform_plasma', w, h);
         }
         // Items
         if (!this.textures.exists('item_fish')) {
-            const g = this.make.graphics({x:0, y:0, add: false});
+            const g = this.make.graphics({x:0, y:0});
             g.fillStyle(0x4682B4, 1.0); g.fillEllipse(20, 20, 30, 15);
             g.generateTexture('item_fish', 50, 40);
         }
         if (!this.textures.exists('item_milk')) {
-            const g = this.make.graphics({x:0, y:0, add: false});
+            const g = this.make.graphics({x:0, y:0});
             g.fillStyle(0xFFFFFF, 1.0); g.fillRect(10, 15, 20, 25);
             g.generateTexture('item_milk', 40, 40);
         }
         if (!this.textures.exists('item_cookie')) {
-            const g = this.make.graphics({x:0, y:0, add: false});
+            const g = this.make.graphics({x:0, y:0});
             g.fillStyle(0xD2691E, 1.0); g.fillCircle(20, 20, 15);
             g.generateTexture('item_cookie', 40, 40);
         }
         if (!this.textures.exists('item_flower')) {
-            const g = this.make.graphics({x:0, y:0, add: false});
+            const g = this.make.graphics({x:0, y:0});
             g.fillStyle(0xFF69B4, 1.0); g.fillCircle(20, 20, 8);
             g.generateTexture('item_flower', 40, 40);
         }
         if (!this.textures.exists('item_gem')) {
-            const g = this.make.graphics({x:0, y:0, add: false});
+            const g = this.make.graphics({x:0, y:0});
             g.fillStyle(0x00FFFF, 1.0); g.fillTriangle(20,5,35,15,5,15);
             g.generateTexture('item_gem', 40, 40);
         }
         // Player
         if (!this.textures.exists('player_side')) {
-             const g = this.make.graphics({ x: 0, y: 0, add: false });
+             const g = this.make.graphics({ x: 0, y: 0});
              g.fillStyle(0xFFA500, 1.0); g.fillRect(10, 25, 30, 35); g.fillCircle(25, 20, 15);
              g.generateTexture('player_side', 50, 64);
         }
         if (!this.textures.exists('player_jump')) {
-             const g = this.make.graphics({ x: 0, y: 0, add: false });
+             const g = this.make.graphics({ x: 0, y: 0});
              g.fillStyle(0xFFA500, 1.0); g.fillRect(10, 25, 30, 40); g.fillCircle(25, 20, 15);
              g.generateTexture('player_jump', 50, 75);
         }
@@ -279,40 +238,14 @@ export default class GameScene extends Phaser.Scene {
             platform.setData('type', type);
             platform.clearTint();
 
-            // Spawn Logic: Item (30%) OR Enemy (20%)
+            // Spawn Logic: Item (30%) - Removed Enemy spawn
             if (!isStartPlatform) {
                 const rand = Math.random();
                 if (rand < 0.3) {
                     this.spawnItem(x, y - 40);
-                } else if (rand < 0.5) { // 30% to 50% = 20% range
-                    this.spawnEnemy(x, y - 40);
                 }
             }
         }
-    }
-
-    private spawnEnemy(x: number, y: number) {
-        const data = GameData.getInstance();
-        let enemy = this.enemies.getFirstDead();
-        if (!enemy) {
-            enemy = this.enemies.create(x, y, 'enemy_red');
-        } else {
-            enemy.setTexture('enemy_red');
-            enemy.setActive(true).setVisible(true);
-            enemy.setPosition(x, y);
-            enemy.enableBody(true, x, y, true, true);
-        }
-
-        // Scaling Stats
-        const hp = 20 * data.currentStage;
-        enemy.setData('hp', hp);
-        enemy.setTint(0xffffff);
-
-        // Simple Physics
-        enemy.body.setGravityY(0); // Floating? Or walking? Let's make them static for now on platforms
-        // Actually simple gravity to sit on platform
-        enemy.body.setGravityY(1000);
-        this.physics.add.collider(enemy, this.platforms);
     }
 
     private spawnItem(x: number, y: number) {
@@ -336,49 +269,7 @@ export default class GameScene extends Phaser.Scene {
         item.setData('value', value);
     }
 
-    private hitEnemyBody(player: any, enemy: any) {
-        // Player hits enemy -> Damage
-        if (this.isGameOver) return;
-
-        const data = GameData.getInstance();
-        const damage = 10 * data.currentStage;
-
-        this.playerHP -= damage;
-        // Bounce player
-        player.setVelocityY(-500);
-        const dir = player.x < enemy.x ? -1 : 1;
-        player.setVelocityX(dir * -500);
-
-        // Flash red
-        player.setTint(0xff0000);
-        this.time.delayedCall(200, () => player.clearTint());
-
-        if (this.playerHP <= 0) {
-            this.showGameOver(false);
-        }
-    }
-
-    private bulletHitEnemy(bullet: any, enemy: any) {
-        if (!bullet.active || !enemy.active) return;
-
-        bullet.setActive(false).setVisible(false);
-
-        const data = GameData.getInstance();
-        const dmg = 10 * data.weaponLevel;
-        let hp = enemy.getData('hp') - dmg;
-        enemy.setData('hp', hp);
-
-        enemy.setTint(0xff0000);
-        this.time.delayedCall(100, () => enemy.clearTint());
-
-        if (hp <= 0) {
-            enemy.disableBody(true, true);
-            // Reward score?
-            this.itemScore += 50 * data.currentStage;
-        }
-    }
-
-    private collectItem(player: any, item: any) {
+    private collectItem(_player: any, item: any) {
         item.disableBody(true, true);
         const val = item.getData('value');
         this.itemScore += val;
@@ -410,32 +301,7 @@ export default class GameScene extends Phaser.Scene {
         this.dashTimer = 200;
     }
 
-    private autoShoot(time: number) {
-        // Cooldown: 1 sec (adjusted for game feel)
-        if (time < this.shootTimer) return;
-        this.shootTimer = time + 1000;
-
-        // Find nearest enemy
-        let nearest: Phaser.Physics.Arcade.Sprite | null = null;
-        let minDist = 600; // Range
-
-        this.enemies.children.iterate((child: any) => {
-            if (!child.active) return true;
-            const dist = Phaser.Math.Distance.Between(this.player.x, this.player.y, child.x, child.y);
-            if (dist < minDist) {
-                minDist = dist;
-                nearest = child;
-            }
-            return true;
-        });
-
-        if (nearest) {
-            const bullet = this.bullets.create(this.player.x, this.player.y, 'bullet');
-            this.physics.moveToObject(bullet, nearest, 600);
-        }
-    }
-
-    update(time: number, delta: number) {
+    update(_time: number, delta: number) {
         if (this.isGameOver || this.isGameClear) return;
 
         this.timeLeft -= delta;
@@ -446,9 +312,6 @@ export default class GameScene extends Phaser.Scene {
             return;
         }
         this.updateTimerText();
-
-        // Combat
-        this.autoShoot(time);
 
         // Movement
         if (this.isDashing) {
@@ -490,16 +353,6 @@ export default class GameScene extends Phaser.Scene {
         this.items.children.iterate((i: any) => {
              if (i.active && i.y > cameraBottom + 100) { this.items.killAndHide(i); i.disableBody(true, true); }
              return true;
-        });
-        this.enemies.children.iterate((e: any) => {
-            if (e.active && e.y > cameraBottom + 100) { this.enemies.killAndHide(e); e.disableBody(true, true); }
-            return true;
-        });
-        this.bullets.children.iterate((b: any) => {
-            if (b.active && (b.y > cameraBottom + 100 || b.y < this.cameras.main.scrollY - 100)) {
-                b.destroy(); // Bullets are cheap to destroy/create
-            }
-            return true;
         });
 
         // Gen
