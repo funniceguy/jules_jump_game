@@ -5,6 +5,11 @@ export default class GameScene extends Phaser.Scene {
     private platforms!: Phaser.Physics.Arcade.StaticGroup;
     private cursors!: Phaser.Types.Input.Keyboard.CursorKeys;
 
+    // Configuration
+    private readonly platformCount = 10; // Number of platforms in pool
+    private readonly platformVerticalDistance = 120; // 600px / 5 = 120px
+    private readonly platformWidth = 150; // 800px / 5 roughly
+
     constructor() {
         super('GameScene');
     }
@@ -12,36 +17,53 @@ export default class GameScene extends Phaser.Scene {
     create() {
         const { width, height } = this.scale;
 
-        // Create platforms group
-        this.platforms = this.physics.add.staticGroup();
-
-        // Create texture if missing
-        if (!this.textures.exists('player')) {
-            const graphics = this.make.graphics({ x: 0, y: 0, add: false });
-            graphics.fillStyle(0x00ffff, 1.0);
-            graphics.fillRect(0, 0, 32, 48);
-            graphics.generateTexture('player', 32, 48);
-        }
-
-        if (!this.textures.exists('ground')) {
+        // Create platform texture
+        if (!this.textures.exists('platform')) {
             const graphics = this.make.graphics({ x: 0, y: 0, add: false });
             graphics.fillStyle(0x00ff00, 1.0);
-            graphics.fillRect(0, 0, 400, 32);
-            graphics.generateTexture('ground', 400, 32);
+            graphics.fillRect(0, 0, this.platformWidth, 20);
+            graphics.generateTexture('platform', this.platformWidth, 20);
         }
 
-        // Initial Platforms
-        this.platforms.clear(true, true);
-        const ground = this.platforms.create(width * 0.5, height - 50, 'ground');
-        ground.setScale(2, 1).refreshBody();
+        // Create platforms group with pooling
+        this.platforms = this.physics.add.staticGroup({
+            key: 'platform',
+            frameQuantity: this.platformCount,
+            active: false,
+            visible: false
+        });
 
-        this.platforms.create(width * 0.5, height - 200, 'ground').setScale(0.5, 1).refreshBody();
-        this.platforms.create(width * 0.2, height - 350, 'ground').setScale(0.5, 1).refreshBody();
-        this.platforms.create(width * 0.8, height - 500, 'ground').setScale(0.5, 1).refreshBody();
+        // Initialize platforms
+        const platforms = this.platforms.getChildren() as Phaser.Physics.Arcade.Image[];
+
+        // Start from bottom
+        let currentY = height - 50;
+
+        platforms.forEach((platform, index) => {
+            platform.setActive(true).setVisible(true);
+
+            // First platform always in center to catch player
+            const x = index === 0 ? width * 0.5 : Phaser.Math.Between(this.platformWidth / 2, width - this.platformWidth / 2);
+
+            platform.x = x;
+            platform.y = currentY;
+            platform.refreshBody();
+
+            currentY -= this.platformVerticalDistance;
+        });
 
         // Player
-        // Start slightly above the ground
-        this.player = this.physics.add.sprite(width * 0.5, height - 150, 'player');
+        this.player = this.physics.add.sprite(width * 0.5, height - 150, 'player'); // Texture 'player' from previous step (handled implicitly if main loads it, but we generate in create if missing)
+
+        // Regenerate player texture if missing (in case scene reloaded without texture manager persistence, though usually it persists)
+        if (!this.textures.exists('player')) {
+             const graphics = this.make.graphics({ x: 0, y: 0, add: false });
+             graphics.fillStyle(0x00ffff, 1.0);
+             graphics.fillRect(0, 0, 32, 48);
+             graphics.generateTexture('player', 32, 48);
+             this.player.setTexture('player');
+        }
+
         this.player.setBounce(0.1);
         this.player.setCollideWorldBounds(false);
 
@@ -49,7 +71,8 @@ export default class GameScene extends Phaser.Scene {
         this.physics.add.collider(this.player, this.platforms, this.handleCollision, undefined, this);
 
         // Camera
-        this.cameras.main.startFollow(this.player, true, 0, 0.05, 0, 100);
+        this.cameras.main.startFollow(this.player, true, 0, 0.05, 0, 0); // Offset 0 to keep player centered vertically if possible, or adjust
+        this.cameras.main.setDeadzone(0, 200); // Add deadzone so camera doesn't jitter on small jumps
 
         // Inputs
         if (this.input.keyboard) {
@@ -69,25 +92,66 @@ export default class GameScene extends Phaser.Scene {
             }
         }
 
-        // Wrap world (infinite horizontal scrolling style or just clamp?
-        // Prompt didn't specify wrap, but standard for this type.
-        // For now, let's keep it simple, maybe just no bounds).
-        // To be safe, let's wrap horizontal if they go off screen,
-        // or just let them stay. Let's wrap it to make it playable.
+        // Screen Wrapping
         const width = this.scale.width;
         if (this.player.x < 0) {
             this.player.x = width;
         } else if (this.player.x > width) {
             this.player.x = 0;
         }
+
+        // Infinite Platforms (Pooling)
+        this.recyclePlatforms();
+
+        // Game Over check (fall below camera)
+        const cameraBottom = this.cameras.main.scrollY + this.scale.height;
+        if (this.player.y > cameraBottom + 100) {
+            // Restart or Game Over
+            // For now, let's just respawn or restart scene
+            this.scene.restart();
+        }
+    }
+
+    private recyclePlatforms() {
+        const platforms = this.platforms.getChildren() as Phaser.Physics.Arcade.Image[];
+        const cameraBottom = this.cameras.main.scrollY + this.scale.height;
+        const cameraTop = this.cameras.main.scrollY;
+
+        // Find the highest platform Y
+        let minY = Number.MAX_VALUE;
+        platforms.forEach(p => {
+            if (p.y < minY) minY = p.y;
+        });
+
+        // Loop through platforms and recycle those below the screen
+        platforms.forEach(platform => {
+            // If platform is well below the camera view
+            if (platform.y > cameraBottom + 100) {
+                // Move it above the highest platform
+                const newY = minY - this.platformVerticalDistance;
+
+                // Update X randomly
+                const newX = Phaser.Math.Between(this.platformWidth / 2, this.scale.width - this.platformWidth / 2);
+
+                platform.y = newY;
+                platform.x = newX;
+                platform.refreshBody();
+
+                // Update minY since we just added a higher platform
+                minY = newY;
+            }
+        });
     }
 
     private handleCollision(player: any, platform: any) {
         const body = player.body as Phaser.Physics.Arcade.Body;
 
-        // Only jump if touching down (falling onto platform)
+        // Only jump if touching down
         if (body.touching.down) {
-            body.setVelocityY(-500);
+            // Jump high enough to clear 2 platforms (2 * 120 = 240px)
+            // v^2 = 2 * g * h
+            // v = sqrt(2 * 600 * 250) ~ 550. Let's do -600 for safety.
+            body.setVelocityY(-600);
         }
     }
 }
