@@ -9,6 +9,9 @@ export default class GameScene extends Phaser.Scene {
     // UI & Controls
     private scoreText!: Phaser.GameObjects.Text;
     private scoreBg!: Phaser.GameObjects.Graphics;
+    private timerText!: Phaser.GameObjects.Text;
+    private timerBg!: Phaser.GameObjects.Graphics;
+
     private heightScore = 0; // Score from climbing
     private itemScore = 0;   // Score from items
 
@@ -17,6 +20,8 @@ export default class GameScene extends Phaser.Scene {
 
     // Configuration
     private readonly platformVerticalDistance = 220;
+    private readonly targetScore = 10000;
+    private timeLeft = 180000; // 3 Minutes in ms
 
     // Generation Logic
     private highestY = 0;
@@ -24,6 +29,7 @@ export default class GameScene extends Phaser.Scene {
 
     // State
     private isGameOver = false;
+    private isGameClear = false;
     private isFlying = false;
     private flyTimer = 0;
     private flyVelocity = 0;
@@ -40,6 +46,7 @@ export default class GameScene extends Phaser.Scene {
     create() {
         const { width, height } = this.scale;
         this.isGameOver = false;
+        this.isGameClear = false;
         this.heightScore = 0;
         this.itemScore = 0;
         this.moveDirection = 1;
@@ -49,6 +56,7 @@ export default class GameScene extends Phaser.Scene {
         this.canDoubleJump = false;
         this.isDashing = false;
         this.dashTimer = 0;
+        this.timeLeft = 180000; // Reset Timer
 
         // --- Assets ---
         this.createAssets();
@@ -94,7 +102,6 @@ export default class GameScene extends Phaser.Scene {
         this.createControls(); // New Controls
 
         // Input Listener (Toggle) - Only on game area, avoiding buttons?
-        // Actually, buttons stop propagation if handled.
         // We'll attach a broad listener but check target.
         this.input.on('pointerdown', (pointer: Phaser.Input.Pointer, gameObjects: any[]) => {
             if (gameObjects.length === 0) {
@@ -273,9 +280,13 @@ export default class GameScene extends Phaser.Scene {
                 type = forceType;
             } else {
                 const rand = Math.random();
-                if (rand < 0.70) type = 'wood';
-                else if (rand < 0.85) type = 'rubber';
-                else if (rand < 0.95) type = 'electric';
+                // Wood: 60% (0.00 - 0.60)
+                // Rubber: 10% (0.60 - 0.70) - "Jump Platform slightly less"
+                // Electric: 20% (0.70 - 0.90) - "2x Flight"
+                // Plasma: 10% (0.90 - 1.00) - "3x Flight"
+                if (rand < 0.60) type = 'wood';
+                else if (rand < 0.70) type = 'rubber';
+                else if (rand < 0.90) type = 'electric';
                 else type = 'plasma';
             }
 
@@ -300,9 +311,8 @@ export default class GameScene extends Phaser.Scene {
                 // Max Width = 25% of screen width
                 const maxAllowed = width * 0.25;
                 const maxW = Math.min(maxAllowed, segmentWidth - 20);
-                // Ensure w is at least some size (e.g. 60 or 80), but clamp to maxW
                 const minW = 80;
-                const safeMax = Math.max(minW, maxW); // If maxW < minW, we might have issues, but 720*0.25=180, so 180 > 80. OK.
+                const safeMax = Math.max(minW, maxW);
 
                 w = Phaser.Math.Between(minW, safeMax);
 
@@ -340,13 +350,13 @@ export default class GameScene extends Phaser.Scene {
         // Fish (30%), Milk (25%), Cookie (20%), Flower (15%), Gem (10%)
         const rand = Math.random();
         let itemType = 'item_fish';
-        let value = 50;
+        let value = 100; // All doubled
 
-        if (rand < 0.30) { itemType = 'item_fish'; value = 50; }
-        else if (rand < 0.55) { itemType = 'item_milk'; value = 100; }
-        else if (rand < 0.75) { itemType = 'item_cookie'; value = 150; }
-        else if (rand < 0.90) { itemType = 'item_flower'; value = 200; }
-        else { itemType = 'item_gem'; value = 500; }
+        if (rand < 0.30) { itemType = 'item_fish'; value = 100; }
+        else if (rand < 0.55) { itemType = 'item_milk'; value = 200; }
+        else if (rand < 0.75) { itemType = 'item_cookie'; value = 300; }
+        else if (rand < 0.90) { itemType = 'item_flower'; value = 400; }
+        else { itemType = 'item_gem'; value = 1000; }
 
         let item = this.items.getFirstDead();
         if (!item) {
@@ -382,13 +392,13 @@ export default class GameScene extends Phaser.Scene {
     }
 
     private handleInput() {
-        if (this.isGameOver) return;
+        if (this.isGameOver || this.isGameClear) return;
         // Basic toggle still exists if clicking empty space
         this.moveDirection *= -1;
     }
 
     private performJump() {
-        if (this.isGameOver || this.isFlying) return;
+        if (this.isGameOver || this.isGameClear || this.isFlying) return;
         const body = this.player.body as Phaser.Physics.Arcade.Body;
 
         // Logic: If in air and canDoubleJump is true, Jump again.
@@ -414,7 +424,7 @@ export default class GameScene extends Phaser.Scene {
     }
 
     private performDash() {
-        if (this.isGameOver || this.isDashing) return;
+        if (this.isGameOver || this.isGameClear || this.isDashing) return;
 
         this.isDashing = true;
         this.dashTimer = 200; // 200ms dash
@@ -427,7 +437,17 @@ export default class GameScene extends Phaser.Scene {
     }
 
     update(time: number, delta: number) {
-        if (this.isGameOver) return;
+        if (this.isGameOver || this.isGameClear) return;
+
+        // --- Timer Logic ---
+        this.timeLeft -= delta;
+        if (this.timeLeft <= 0) {
+            this.timeLeft = 0;
+            this.updateTimerText();
+            this.showGameOver(true);
+            return;
+        }
+        this.updateTimerText();
 
         // --- Movement ---
         if (this.isDashing) {
@@ -504,11 +524,36 @@ export default class GameScene extends Phaser.Scene {
         }
 
         const totalScore = this.heightScore + this.itemScore;
-        this.scoreText.setText(`${totalScore}`);
+        this.scoreText.setText(`${totalScore} / ${this.targetScore}`);
 
-        // Game Over
+        // Win Condition
+        if (totalScore >= this.targetScore) {
+            this.showGameClear();
+        }
+
+        // Game Over (Fall)
         if (this.player.y > cameraBottom + 100) {
-            this.showGameOver();
+            this.showGameOver(false);
+        }
+    }
+
+    private updateTimerText() {
+        const totalSeconds = Math.floor(this.timeLeft / 1000);
+        const minutes = Math.floor(totalSeconds / 60);
+        const seconds = totalSeconds % 60;
+        const ms = Math.floor((this.timeLeft % 1000) / 10); // 2 digits
+
+        const minStr = minutes.toString().padStart(2, '0');
+        const secStr = seconds.toString().padStart(2, '0');
+        const msStr = ms.toString().padStart(2, '0');
+
+        this.timerText.setText(`${minStr}:${secStr}:${msStr}`);
+
+        // Warning Color if low time (< 30s)
+        if (totalSeconds < 30) {
+            this.timerText.setColor('#ff0000');
+        } else {
+            this.timerText.setColor('#ffffff');
         }
     }
 
@@ -543,7 +588,9 @@ export default class GameScene extends Phaser.Scene {
 
     private createUI() {
         const { width } = this.scale;
-        const pillW = 120;
+
+        // Score UI
+        const pillW = 250; // Wider for target score
         const pillH = 50;
         const pillX = 40;
         const pillY = 40;
@@ -553,10 +600,27 @@ export default class GameScene extends Phaser.Scene {
         this.scoreBg.fillRoundedRect(pillX, pillY, pillW, pillH, 25);
         this.scoreBg.setScrollFactor(0).setDepth(10);
 
-        this.scoreText = this.add.text(pillX + pillW/2, pillY + pillH/2, '0', {
-            fontSize: '32px',
+        this.scoreText = this.add.text(pillX + pillW/2, pillY + pillH/2, `0 / ${this.targetScore}`, {
+            fontSize: '24px',
             color: '#4285f4',
             fontFamily: 'Arial, sans-serif',
+            fontStyle: 'bold'
+        }).setOrigin(0.5).setScrollFactor(0).setDepth(11);
+
+        // Timer UI (Top Center)
+        const timerW = 180;
+        const timerX = width / 2 - timerW / 2;
+        const timerY = 40;
+
+        this.timerBg = this.add.graphics();
+        this.timerBg.fillStyle(0x000000, 0.5);
+        this.timerBg.fillRoundedRect(timerX, timerY, timerW, pillH, 25);
+        this.timerBg.setScrollFactor(0).setDepth(10);
+
+        this.timerText = this.add.text(width / 2, timerY + pillH/2, '03:00:00', {
+            fontSize: '28px',
+            color: '#ffffff',
+            fontFamily: 'monospace',
             fontStyle: 'bold'
         }).setOrigin(0.5).setScrollFactor(0).setDepth(11);
     }
@@ -605,14 +669,12 @@ export default class GameScene extends Phaser.Scene {
         dashBtn.on('pointerout', () => dashBtn.setFillStyle(0x00ffff, 0.2));
     }
 
-    private showGameOver() {
+    private showGameOver(isTimeOver: boolean) {
         if (this.isGameOver) return;
         this.isGameOver = true;
         this.physics.pause();
 
         const { width, height } = this.scale;
-
-        // Remove Container complexity. Use Screen coordinates directly via ScrollFactor(0)
 
         // Background
         const bg = this.add.rectangle(width/2, height/2, width, height, 0x000000, 0.85)
@@ -629,9 +691,12 @@ export default class GameScene extends Phaser.Scene {
         card.setScrollFactor(0).setDepth(101);
 
         // Text
-        const title = this.add.text(width/2, height/2 - 100, 'Game Over', {
+        const titleText = isTimeOver ? 'Time Over' : 'Game Over';
+        const titleColor = isTimeOver ? '#FF0000' : '#202124';
+
+        const title = this.add.text(width/2, height/2 - 100, titleText, {
             fontSize: '56px',
-            color: '#202124',
+            color: titleColor,
             fontFamily: 'Arial, sans-serif',
             fontStyle: 'bold'
         }).setOrigin(0.5).setScrollFactor(0).setDepth(102);
@@ -667,14 +732,79 @@ export default class GameScene extends Phaser.Scene {
             fontStyle: 'bold'
         }).setOrigin(0.5).setScrollFactor(0).setDepth(104);
 
-        // Clickable Hit Area - Placed on TOP
-        const hitArea = this.add.rectangle(width/2, btnY, btnW, btnH, 0xff0000, 0) // Visible 0
+        // Clickable Hit Area
+        const hitArea = this.add.rectangle(width/2, btnY, btnW, btnH, 0xff0000, 0)
             .setScrollFactor(0)
             .setDepth(105)
             .setInteractive({ useHandCursor: true });
 
         hitArea.on('pointerdown', () => {
-            console.log('Exit button clicked');
+            this.scene.start('LobbyScene');
+        });
+    }
+
+    private showGameClear() {
+        if (this.isGameClear || this.isGameOver) return;
+        this.isGameClear = true;
+        this.physics.pause();
+
+        const { width, height } = this.scale;
+
+        // Background
+        const bg = this.add.rectangle(width/2, height/2, width, height, 0x000000, 0.85)
+            .setScrollFactor(0)
+            .setDepth(100)
+            .setInteractive();
+
+        // Card
+        const cardW = 500;
+        const cardH = 400;
+        const card = this.add.graphics();
+        card.fillStyle(0xFFD700, 1.0); // Gold
+        card.fillRoundedRect((width - cardW)/2, (height - cardH)/2, cardW, cardH, 30);
+        card.setScrollFactor(0).setDepth(101);
+
+        // Title
+        this.add.text(width/2, height/2 - 80, 'Mission Clear!', {
+            fontSize: '56px',
+            color: '#ffffff',
+            fontFamily: 'Arial, sans-serif',
+            fontStyle: 'bold',
+            stroke: '#000000',
+            strokeThickness: 4
+        }).setOrigin(0.5).setScrollFactor(0).setDepth(102);
+
+        // Final Score
+        const totalScore = this.heightScore + this.itemScore;
+        this.add.text(width/2, height/2 + 20, `Final Score: ${totalScore}`, {
+            fontSize: '36px',
+            color: '#000000',
+            fontFamily: 'Arial, sans-serif'
+        }).setOrigin(0.5).setScrollFactor(0).setDepth(102);
+
+        // Clear Stage Button
+        const btnW = 250;
+        const btnH = 70;
+        const btnY = height/2 + 120;
+
+        const btnBg = this.add.graphics();
+        btnBg.fillStyle(0xffffff, 1.0);
+        btnBg.fillRoundedRect(width/2 - btnW/2, btnY - btnH/2, btnW, btnH, 30);
+        btnBg.setScrollFactor(0).setDepth(103);
+
+        const btnText = this.add.text(width/2, btnY, 'Clear Stage', {
+            fontSize: '32px',
+            color: '#4285f4',
+            fontFamily: 'Arial, sans-serif',
+            fontStyle: 'bold'
+        }).setOrigin(0.5).setScrollFactor(0).setDepth(104);
+
+        const hitArea = this.add.rectangle(width/2, btnY, btnW, btnH, 0xff0000, 0)
+            .setScrollFactor(0)
+            .setDepth(105)
+            .setInteractive({ useHandCursor: true });
+
+        hitArea.on('pointerdown', () => {
             this.scene.start('LobbyScene');
         });
     }
