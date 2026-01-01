@@ -12,12 +12,10 @@ export default class GameScene extends Phaser.Scene {
 
     // Toggle Control
     private moveDirection = 1; // 1 for Right, -1 for Left
-    private leftArrow!: Phaser.GameObjects.Text;
-    private rightArrow!: Phaser.GameObjects.Text;
 
     // Configuration
-    private readonly platformCount = 10;
-    private readonly platformVerticalDistance = 120;
+    private readonly platformCount = 12; // Increased for taller screen
+    private readonly platformVerticalDistance = 200; // Adjusted for 1280 height (approx 6 platforms)
     private readonly platformWidth = 150;
 
     // Generation Logic
@@ -36,21 +34,10 @@ export default class GameScene extends Phaser.Scene {
         this.isGameOver = false;
         this.score = 0;
         this.displayScore = 0;
-        this.moveDirection = 1; // Start moving right
+        this.moveDirection = 1;
 
         // --- Assets ---
-        if (!this.textures.exists('platform')) {
-            const graphics = this.make.graphics({ x: 0, y: 0, add: false });
-            graphics.fillStyle(0x00ff00, 1.0);
-            graphics.fillRect(0, 0, this.platformWidth, 20);
-            graphics.generateTexture('platform', this.platformWidth, 20);
-        }
-        if (!this.textures.exists('player')) {
-             const graphics = this.make.graphics({ x: 0, y: 0, add: false });
-             graphics.fillStyle(0x00ffff, 1.0);
-             graphics.fillRect(0, 0, 32, 48);
-             graphics.generateTexture('player', 32, 48);
-        }
+        this.createAssets();
 
         // --- Platforms ---
         this.platforms = this.physics.add.staticGroup({
@@ -61,7 +48,7 @@ export default class GameScene extends Phaser.Scene {
         });
 
         const platforms = this.platforms.getChildren() as Phaser.Physics.Arcade.Image[];
-        let currentY = height - 50;
+        let currentY = height - 100;
 
         // Initial Platform (Center)
         const first = platforms[0];
@@ -77,16 +64,19 @@ export default class GameScene extends Phaser.Scene {
         }
 
         // --- Player ---
-        this.player = this.physics.add.sprite(width * 0.5, height - 150, 'player');
+        this.player = this.physics.add.sprite(width * 0.5, height - 300, 'player_side');
         this.player.setBounce(0.1);
         this.player.setCollideWorldBounds(false);
+
+        // Adjust player size/offset if needed for the sprite
+        // (Assuming 48x64 or similar generated)
 
         // Physics
         this.physics.add.collider(this.player, this.platforms, this.handleCollision, undefined, this);
 
         // --- Camera ---
         this.cameras.main.startFollow(this.player, true, 0, 0.05, 0, 0);
-        this.cameras.main.setDeadzone(0, 200);
+        this.cameras.main.setDeadzone(0, 400); // Larger deadzone for taller screen
 
         // --- UI & Controls ---
         this.createUI();
@@ -94,62 +84,110 @@ export default class GameScene extends Phaser.Scene {
         // Input Listener (Toggle)
         this.input.on('pointerdown', this.handleInput, this);
 
-        // Keyboard (Optional: Space to toggle?)
+        // Keyboard
         if (this.input.keyboard) {
             this.cursors = this.input.keyboard.createCursorKeys();
             this.input.keyboard.on('keydown-SPACE', () => this.handleInput());
-            this.input.keyboard.on('keydown-LEFT', () => this.moveDirection = -1);
-            this.input.keyboard.on('keydown-RIGHT', () => this.moveDirection = 1);
+        }
+    }
+
+    private createAssets() {
+        // Platform
+        if (!this.textures.exists('platform')) {
+            const graphics = this.make.graphics({ x: 0, y: 0, add: false });
+            graphics.fillStyle(0x00ff00, 1.0);
+            graphics.fillRect(0, 0, this.platformWidth, 30);
+            graphics.generateTexture('platform', this.platformWidth, 30);
+        }
+
+        // Player Side (Run/Stand)
+        if (!this.textures.exists('player_side')) {
+             const graphics = this.make.graphics({ x: 0, y: 0, add: false });
+
+             // Body
+             graphics.fillStyle(0x00ffff, 1.0);
+             graphics.fillRect(10, 20, 30, 40);
+
+             // Head
+             graphics.fillStyle(0xffff00, 1.0);
+             graphics.fillCircle(25, 15, 12);
+
+             // Eye (Looking Right)
+             graphics.fillStyle(0x000000, 1.0);
+             graphics.fillCircle(30, 12, 3);
+
+             graphics.generateTexture('player_side', 50, 64);
+        }
+
+        // Player Jump
+        if (!this.textures.exists('player_jump')) {
+             const graphics = this.make.graphics({ x: 0, y: 0, add: false });
+
+             // Body (Stretched)
+             graphics.fillStyle(0x00ffff, 1.0);
+             graphics.fillRect(10, 20, 30, 45); // Taller
+
+             // Head
+             graphics.fillStyle(0xffff00, 1.0);
+             graphics.fillCircle(25, 15, 12);
+
+             // Eye (Looking Right - Upward?)
+             graphics.fillStyle(0x000000, 1.0);
+             graphics.fillCircle(30, 10, 3);
+
+             // Legs tucked?
+             graphics.fillStyle(0x0000ff, 1.0);
+             graphics.fillRect(10, 60, 10, 10);
+             graphics.fillRect(30, 55, 10, 10);
+
+             graphics.generateTexture('player_jump', 50, 75);
         }
     }
 
     private handleInput() {
         if (this.isGameOver) return;
         this.moveDirection *= -1;
-        this.updateArrowVisuals();
-    }
-
-    private updateArrowVisuals() {
-        // Highlight active direction
-        if (this.moveDirection === -1) {
-            this.leftArrow.setAlpha(0.8);
-            this.rightArrow.setAlpha(0.2);
-        } else {
-            this.leftArrow.setAlpha(0.2);
-            this.rightArrow.setAlpha(0.8);
-        }
     }
 
     update() {
         if (this.isGameOver) return;
 
         // --- Movement ---
-        // Constant velocity based on direction
-        this.player.setVelocityX(200 * this.moveDirection);
+        const speed = 400; // Increased speed for scale
+        this.player.setVelocityX(speed * this.moveDirection);
 
         // Wrap
         const width = this.scale.width;
         if (this.player.x < 0) this.player.x = width;
         else if (this.player.x > width) this.player.x = 0;
 
+        // --- Animation State ---
+        // Flip based on direction
+        this.player.setFlipX(this.moveDirection === -1);
+
+        // Texture based on state
+        if (!this.player.body.touching.down) {
+            // In Air (Jumping/Falling)
+             if (this.player.texture.key !== 'player_jump') {
+                 this.player.setTexture('player_jump');
+             }
+        } else {
+            // On Ground
+            if (this.player.texture.key !== 'player_side') {
+                this.player.setTexture('player_side');
+            }
+        }
+
         // --- Infinite Generation ---
         this.recyclePlatforms();
 
         // --- Score Logic ---
-        const startY = this.scale.height - 150;
+        const startY = this.scale.height - 300;
         if (this.player.y < startY) {
             const rawScore = Math.floor((startY - this.player.y) / this.platformVerticalDistance);
             if (rawScore > this.score) {
                 this.score = rawScore;
-                this.tweens.addCounter({
-                    from: this.displayScore,
-                    to: this.score,
-                    duration: 500,
-                    onUpdate: (tween) => {
-                        this.displayScore = Math.floor(tween.getValue());
-                        this.scoreText.setText(`Score: ${this.displayScore}`);
-                    }
-                });
+                this.scoreText.setText(`Score: ${this.score}`);
             }
         }
 
@@ -166,33 +204,31 @@ export default class GameScene extends Phaser.Scene {
         this.physics.pause();
 
         const { width, height } = this.scale;
-
-        // Use scrollX/Y to position UI relative to camera
         const camX = this.cameras.main.scrollX;
         const camY = this.cameras.main.scrollY;
 
         const container = this.add.container(camX + width * 0.5, camY + height * 0.5).setDepth(100);
 
-        // Background
-        const bg = this.add.rectangle(0, 0, width, height, 0x000000, 0.7);
+        // Background (Opaque Black)
+        const bg = this.add.rectangle(0, 0, width, height, 0x000000, 1.0);
 
         // Text
-        const title = this.add.text(0, -50, 'Game Over', {
-            fontSize: '64px',
+        const title = this.add.text(0, -100, 'Game Over', {
+            fontSize: '80px',
             color: '#ff0000',
             stroke: '#ffffff',
-            strokeThickness: 4
+            strokeThickness: 5
         }).setOrigin(0.5);
 
-        const scoreMsg = this.add.text(0, 20, `Final Score: ${this.score}`, {
-            fontSize: '32px',
+        const scoreMsg = this.add.text(0, 0, `Final Score: ${this.score}`, {
+            fontSize: '48px',
             color: '#ffffff'
         }).setOrigin(0.5);
 
         // Exit Button
-        const btnBg = this.add.rectangle(0, 100, 200, 60, 0xffffff).setInteractive({ useHandCursor: true });
-        const btnText = this.add.text(0, 100, 'Exit', {
-            fontSize: '32px',
+        const btnBg = this.add.rectangle(0, 150, 300, 80, 0xffffff).setInteractive({ useHandCursor: true });
+        const btnText = this.add.text(0, 150, 'Exit', {
+            fontSize: '40px',
             color: '#000000'
         }).setOrigin(0.5);
 
@@ -261,33 +297,18 @@ export default class GameScene extends Phaser.Scene {
     private handleCollision(player: any, platform: any) {
         const body = player.body as Phaser.Physics.Arcade.Body;
         if (body.touching.down) {
-            body.setVelocityY(-600);
+            // Updated velocity for scale/gravity
+            body.setVelocityY(-1000); // Higher jump for gravity 1500
         }
     }
 
     private createUI() {
         const { width, height } = this.scale;
-
-        // --- Score ---
-        this.scoreText = this.add.text(width * 0.5, 50, 'Score: 0', {
-            fontSize: '48px',
+        this.scoreText = this.add.text(width * 0.5, 100, 'Score: 0', {
+            fontSize: '64px',
             color: '#ffffff',
             stroke: '#000000',
             strokeThickness: 4
         }).setOrigin(0.5).setScrollFactor(0).setDepth(10);
-
-        // --- Arrows ---
-        // Transparent arrows in center of screen halves
-        // Left Center: 25% width
-        this.leftArrow = this.add.text(width * 0.25, height * 0.5, '⬅️', {
-            fontSize: '128px',
-            color: '#ffffff'
-        }).setOrigin(0.5).setAlpha(0.2).setScrollFactor(0).setDepth(0);
-
-        // Right Center: 75% width
-        this.rightArrow = this.add.text(width * 0.75, height * 0.5, '➡️', {
-            fontSize: '128px',
-            color: '#ffffff'
-        }).setOrigin(0.5).setAlpha(0.8).setScrollFactor(0).setDepth(0); // Right active by default
     }
 }

@@ -5,8 +5,10 @@ import './style.css';
 
 const config: Phaser.Types.Core.GameConfig = {
     type: Phaser.AUTO,
-    width: 800,
-    height: 600,
+    width: 720,
+    height: 1280,
+    parent: 'app', // Attach to the centered div
+    backgroundColor: '#000000',
     scale: {
         mode: Phaser.Scale.FIT,
         autoCenter: Phaser.Scale.CENTER_BOTH
@@ -14,7 +16,7 @@ const config: Phaser.Types.Core.GameConfig = {
     physics: {
         default: 'arcade',
         arcade: {
-            gravity: { y: 600 },
+            gravity: { y: 1500 }, // Increased gravity for taller screen/better feel
             debug: false
         },
     },
