@@ -20,7 +20,7 @@ export default class GameScene extends Phaser.Scene {
 
     // Generation Logic
     private highestY = 0;
-    private lastPlatformCount = 1; // Track last count
+    private lastPlatformCount = 1;
 
     // State
     private isGameOver = false;
@@ -482,64 +482,70 @@ export default class GameScene extends Phaser.Scene {
 
         const { width, height } = this.scale;
 
-        const container = this.add.container(width * 0.5, height * 0.5).setDepth(100).setScrollFactor(0);
-        const bg = this.add.rectangle(0, 0, width, height, 0x000000, 0.85).setInteractive(); // Block click-through
+        // Remove Container complexity. Use Screen coordinates directly via ScrollFactor(0)
 
+        // Background
+        const bg = this.add.rectangle(width/2, height/2, width, height, 0x000000, 0.85)
+            .setScrollFactor(0)
+            .setDepth(100)
+            .setInteractive(); // Block input
+
+        // Card
         const cardW = 500;
         const cardH = 400;
         const card = this.add.graphics();
         card.fillStyle(0xffffff, 1.0);
-        card.fillRoundedRect(-cardW/2, -cardH/2, cardW, cardH, 30);
+        card.fillRoundedRect((width - cardW)/2, (height - cardH)/2, cardW, cardH, 30);
+        card.setScrollFactor(0).setDepth(101);
 
-        const title = this.add.text(0, -100, 'Game Over', {
+        // Text
+        const title = this.add.text(width/2, height/2 - 100, 'Game Over', {
             fontSize: '56px',
             color: '#202124',
             fontFamily: 'Arial, sans-serif',
             fontStyle: 'bold'
-        }).setOrigin(0.5);
+        }).setOrigin(0.5).setScrollFactor(0).setDepth(102);
 
-        const scoreLabel = this.add.text(0, 0, 'Score', {
+        const scoreLabel = this.add.text(width/2, height/2, 'Score', {
             fontSize: '32px',
             color: '#5f6368',
             fontFamily: 'Arial, sans-serif'
-        }).setOrigin(0.5);
+        }).setOrigin(0.5).setScrollFactor(0).setDepth(102);
 
         const totalScore = this.heightScore + this.itemScore;
-        const scoreVal = this.add.text(0, 50, `${totalScore}`, {
+        const scoreVal = this.add.text(width/2, height/2 + 50, `${totalScore}`, {
             fontSize: '64px',
             color: '#4285f4',
             fontFamily: 'Arial, sans-serif',
             fontStyle: 'bold'
-        }).setOrigin(0.5);
+        }).setOrigin(0.5).setScrollFactor(0).setDepth(102);
 
+        // Exit Button
         const btnW = 200;
         const btnH = 60;
-        const btnY = 120;
+        const btnY = height/2 + 120;
 
-        const btn = this.add.container(0, btnY);
         const btnBg = this.add.graphics();
         btnBg.fillStyle(0x4285f4, 1.0);
-        btnBg.fillRoundedRect(-btnW/2, -btnH/2, btnW, btnH, 30);
+        btnBg.fillRoundedRect(width/2 - btnW/2, btnY - btnH/2, btnW, btnH, 30);
+        btnBg.setScrollFactor(0).setDepth(103);
 
-        const btnText = this.add.text(0, 0, 'Exit', {
+        const btnText = this.add.text(width/2, btnY, 'Exit', {
             fontSize: '28px',
             color: '#ffffff',
             fontFamily: 'Arial, sans-serif',
             fontStyle: 'bold'
-        }).setOrigin(0.5);
+        }).setOrigin(0.5).setScrollFactor(0).setDepth(104);
 
-        btn.add([btnBg, btnText]);
-
-        // Ensure hit area is set correctly and interactive
-        const hitArea = this.add.rectangle(0, btnY, btnW, btnH, 0x000000, 0)
+        // Clickable Hit Area - Placed on TOP
+        const hitArea = this.add.rectangle(width/2, btnY, btnW, btnH, 0xff0000, 0) // Visible 0
+            .setScrollFactor(0)
+            .setDepth(105)
             .setInteractive({ useHandCursor: true });
 
         hitArea.on('pointerdown', () => {
             console.log('Exit button clicked');
             this.scene.start('LobbyScene');
         });
-
-        // Add to container in order. Hit area last (top)
-        container.add([bg, card, title, scoreLabel, scoreVal, btn, hitArea]);
     }
 }
