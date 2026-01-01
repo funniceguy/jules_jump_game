@@ -8,8 +8,35 @@ export default class LobbyScene extends Phaser.Scene {
     create() {
         const { width, height } = this.scale;
 
-        // Background (Optional, just black for now)
-        this.add.rectangle(width/2, height/2, width, height, 0x000000);
+        // Generate a background texture if it doesn't exist
+        if (!this.textures.exists('lobby_bg')) {
+            const canvas = this.textures.createCanvas('lobby_bg', width, height);
+            const ctx = canvas.getContext();
+
+            // Gradient
+            const grd = ctx.createLinearGradient(0, 0, 0, height);
+            grd.addColorStop(0, '#000033');
+            grd.addColorStop(1, '#330033');
+
+            ctx.fillStyle = grd;
+            ctx.fillRect(0, 0, width, height);
+
+            // Stars
+            ctx.fillStyle = '#ffffff';
+            for (let i = 0; i < 100; i++) {
+                const x = Math.random() * width;
+                const y = Math.random() * height;
+                const r = Math.random() * 2;
+                ctx.beginPath();
+                ctx.arc(x, y, r, 0, Math.PI * 2);
+                ctx.fill();
+            }
+
+            canvas.refresh();
+        }
+
+        // Add Background Image - Centered
+        this.add.image(width * 0.5, height * 0.5, 'lobby_bg').setOrigin(0.5);
 
         // Title
         const titleText = this.add.text(width * 0.5, height * 0.3, 'Jump Game', {
@@ -17,7 +44,9 @@ export default class LobbyScene extends Phaser.Scene {
             color: '#ffffff',
             fontFamily: 'Arial, sans-serif',
             fontStyle: 'bold',
-            align: 'center'
+            align: 'center',
+            stroke: '#000000',
+            strokeThickness: 6
         }).setOrigin(0.5);
 
         // Start Button Container

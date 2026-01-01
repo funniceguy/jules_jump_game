@@ -28,6 +28,11 @@ export default class GameScene extends Phaser.Scene {
     private flyTimer = 0;
     private flyVelocity = 0;
 
+    // Mechanics State
+    private canDoubleJump = false;
+    private isDashing = false;
+    private dashTimer = 0;
+
     constructor() {
         super('GameScene');
     }
@@ -41,6 +46,9 @@ export default class GameScene extends Phaser.Scene {
         this.isFlying = false;
         this.flyTimer = 0;
         this.lastPlatformCount = 1;
+        this.canDoubleJump = false;
+        this.isDashing = false;
+        this.dashTimer = 0;
 
         // --- Assets ---
         this.createAssets();
@@ -83,9 +91,16 @@ export default class GameScene extends Phaser.Scene {
 
         // --- UI & Controls ---
         this.createUI();
+        this.createControls(); // New Controls
 
-        // Input Listener (Toggle)
-        this.input.on('pointerdown', this.handleInput, this);
+        // Input Listener (Toggle) - Only on game area, avoiding buttons?
+        // Actually, buttons stop propagation if handled.
+        // We'll attach a broad listener but check target.
+        this.input.on('pointerdown', (pointer: Phaser.Input.Pointer, gameObjects: any[]) => {
+            if (gameObjects.length === 0) {
+                this.handleInput();
+            }
+        }, this);
 
         // Keyboard
         if (this.input.keyboard) {
@@ -368,15 +383,65 @@ export default class GameScene extends Phaser.Scene {
 
     private handleInput() {
         if (this.isGameOver) return;
+        // Basic toggle still exists if clicking empty space
         this.moveDirection *= -1;
+    }
+
+    private performJump() {
+        if (this.isGameOver || this.isFlying) return;
+        const body = this.player.body as Phaser.Physics.Arcade.Body;
+
+        // Logic: If in air and canDoubleJump is true, Jump again.
+        if (!body.touching.down && this.canDoubleJump) {
+            this.player.setVelocityY(-1000); // Standard jump force
+            this.canDoubleJump = false;
+
+            // Visual feedback
+            this.tweens.add({
+                targets: this.player,
+                scaleX: 1.2,
+                scaleY: 0.8,
+                duration: 100,
+                yoyo: true
+            });
+
+            // Spawn text
+            const txt = this.add.text(this.player.x, this.player.y - 50, 'Double Jump!', {
+                fontSize: '20px', color: '#ff00ff', stroke: '#000', strokeThickness: 2
+            }).setOrigin(0.5);
+            this.tweens.add({ targets: txt, y: txt.y - 50, alpha: 0, duration: 500, onComplete: () => txt.destroy() });
+        }
+    }
+
+    private performDash() {
+        if (this.isGameOver || this.isDashing) return;
+
+        this.isDashing = true;
+        this.dashTimer = 200; // 200ms dash
+
+        // Visual
+        const txt = this.add.text(this.player.x, this.player.y - 50, 'Dash!', {
+            fontSize: '20px', color: '#00ffff', stroke: '#000', strokeThickness: 2
+        }).setOrigin(0.5);
+        this.tweens.add({ targets: txt, y: txt.y - 50, alpha: 0, duration: 500, onComplete: () => txt.destroy() });
     }
 
     update(time: number, delta: number) {
         if (this.isGameOver) return;
 
         // --- Movement ---
-        const speed = 400;
-        this.player.setVelocityX(speed * this.moveDirection);
+        if (this.isDashing) {
+            this.dashTimer -= delta;
+            const dashSpeed = 1000;
+            this.player.setVelocityX(dashSpeed * this.moveDirection);
+            this.player.setVelocityY(0); // Optional: Defy gravity during dash?
+            if (this.dashTimer <= 0) {
+                this.isDashing = false;
+            }
+        } else {
+            const speed = 400;
+            this.player.setVelocityX(speed * this.moveDirection);
+        }
 
         const width = this.scale.width;
         if (this.player.x < 0) this.player.x = width;
@@ -452,6 +517,10 @@ export default class GameScene extends Phaser.Scene {
 
         const body = player.body as Phaser.Physics.Arcade.Body;
         if (body.touching.down) {
+            // Reset Double Jump
+            this.canDoubleJump = true;
+            this.isDashing = false;
+
             const type = platform.getData('type');
             if (type === 'rubber') {
                 body.setVelocityY(-2500);
@@ -490,6 +559,45 @@ export default class GameScene extends Phaser.Scene {
             fontFamily: 'Arial, sans-serif',
             fontStyle: 'bold'
         }).setOrigin(0.5).setScrollFactor(0).setDepth(11);
+    }
+
+    private createControls() {
+        const { width, height } = this.scale;
+
+        // Button Config
+        const btnRadius = 40;
+        const btnY = height - 80;
+        const jumpX = 80;
+        const dashX = width - 80;
+
+        // --- Jump Button ---
+        const jumpBtn = this.add.circle(jumpX, btnY, btnRadius, 0xffffff)
+            .setScrollFactor(0).setDepth(20).setInteractive();
+        const jumpIcon = this.add.text(jumpX, btnY, 'JUMP', {
+            fontSize: '20px', color: '#000', fontStyle: 'bold'
+        }).setOrigin(0.5).setScrollFactor(0).setDepth(21);
+
+        jumpBtn.on('pointerdown', (p: any) => {
+            // Stop propagation handled by scene check, but good practice to handle logic here
+            this.performJump();
+            jumpBtn.setFillStyle(0xdddddd);
+        });
+        jumpBtn.on('pointerup', () => jumpBtn.setFillStyle(0xffffff));
+        jumpBtn.on('pointerout', () => jumpBtn.setFillStyle(0xffffff));
+
+        // --- Dash Button ---
+        const dashBtn = this.add.circle(dashX, btnY, btnRadius, 0xffffff)
+            .setScrollFactor(0).setDepth(20).setInteractive();
+        const dashIcon = this.add.text(dashX, btnY, 'DASH', {
+            fontSize: '20px', color: '#000', fontStyle: 'bold'
+        }).setOrigin(0.5).setScrollFactor(0).setDepth(21);
+
+        dashBtn.on('pointerdown', (p: any) => {
+            this.performDash();
+            dashBtn.setFillStyle(0xdddddd);
+        });
+        dashBtn.on('pointerup', () => dashBtn.setFillStyle(0xffffff));
+        dashBtn.on('pointerout', () => dashBtn.setFillStyle(0xffffff));
     }
 
     private showGameOver() {
