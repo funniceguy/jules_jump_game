@@ -124,36 +124,56 @@ export default class PreloadScene extends Phaser.Scene {
     }
 
     private createPlayerTexture() {
-        // Cute Cat
-        // Side view
-        const w = 60; const h = 60;
+        // Cute Cat Standing/Running
+        const w = 60; const h = 80; // Taller for standing
         const g = this.make.graphics({x:0, y:0});
 
-        // Body (Orange)
+        // Body (Vertical Capsule)
         g.fillStyle(0xFFA500, 1);
-        g.fillRoundedRect(10, 20, 40, 30, 10);
+        g.fillRoundedRect(15, 30, 30, 40, 15); // Torso
 
-        // Head
-        g.fillCircle(45, 20, 15);
+        // Legs (Running pose)
+        g.lineStyle(6, 0xFFA500, 1);
+        // Back Leg
+        g.beginPath(); g.moveTo(25, 60); g.lineTo(15, 75); g.strokePath();
+        // Front Leg
+        g.beginPath(); g.moveTo(35, 60); g.lineTo(45, 75); g.strokePath();
+
+        // Arms (Running pose)
+        // Back Arm
+        g.beginPath(); g.moveTo(20, 40); g.lineTo(10, 30); g.strokePath();
+        // Front Arm
+        g.beginPath(); g.moveTo(40, 40); g.lineTo(50, 30); g.strokePath();
+
+        // Head (Top Center)
+        g.fillStyle(0xFFA500, 1);
+        g.fillCircle(30, 25, 20);
 
         // Ears
-        g.fillTriangle(35, 10, 45, 5, 55, 10); // Left
-        g.fillTriangle(45, 5, 55, 10, 55, 0); // Right (approx)
+        g.fillTriangle(15, 15, 25, 5, 30, 15); // Left
+        g.fillTriangle(30, 15, 35, 5, 45, 15); // Right
 
         // Tail
         g.lineStyle(5, 0xFFA500, 1);
         g.beginPath();
-        g.moveTo(10, 40);
+        g.moveTo(15, 60);
+        g.lineTo(5, 50);
         g.lineTo(5, 35);
-        g.lineTo(5, 20);
         g.strokePath();
 
         // Face
-        g.fillStyle(0xFFFFFF); g.fillCircle(40, 18, 4); g.fillCircle(50, 18, 4); // Eyes
-        g.fillStyle(0x000000); g.fillCircle(40, 18, 1.5); g.fillCircle(50, 18, 1.5); // Pupils
-        g.fillStyle(0xFFC0CB); g.fillTriangle(43, 22, 47, 22, 45, 25); // Nose
+        g.fillStyle(0xFFFFFF); g.fillCircle(24, 22, 5); g.fillCircle(36, 22, 5); // Eyes
+        g.fillStyle(0x000000); g.fillCircle(24, 22, 2); g.fillCircle(36, 22, 2); // Pupils
+        g.fillStyle(0xFFC0CB); g.fillTriangle(27, 28, 33, 28, 30, 31); // Nose
+
+        // Whiskers
+        g.lineStyle(1, 0x000000, 0.5);
+        g.beginPath(); g.moveTo(15, 28); g.lineTo(5, 25); g.strokePath();
+        g.beginPath(); g.moveTo(15, 30); g.lineTo(5, 30); g.strokePath();
+        g.beginPath(); g.moveTo(45, 28); g.lineTo(55, 25); g.strokePath();
+        g.beginPath(); g.moveTo(45, 30); g.lineTo(55, 30); g.strokePath();
 
         g.generateTexture('player_side', w, h);
-        g.generateTexture('player_jump', w, h); // Use same for now
+        g.generateTexture('player_jump', w, h);
     }
 }

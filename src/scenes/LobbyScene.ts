@@ -83,7 +83,10 @@ export default class LobbyScene extends Phaser.Scene {
 
         startBtn.add([startBg, startText]);
         startBtn.setSize(btnW, btnH);
-        startBtn.setInteractive(new Phaser.Geom.Rectangle(-btnW/2, -btnH/2, btnW, btnH), Phaser.Geom.Rectangle.Contains);
+        // Increase Hit Area (padding +40px)
+        const hitW = btnW + 80;
+        const hitH = btnH + 60;
+        startBtn.setInteractive(new Phaser.Geom.Rectangle(-hitW/2, -hitH/2, hitW, hitH), Phaser.Geom.Rectangle.Contains);
 
         startBtn.on('pointerdown', () => {
              this.tweens.add({ targets: startBtn, scaleX: 0.9, scaleY: 0.9, duration: 100, yoyo: true, onComplete: () => this.scene.start('GameScene') });
@@ -127,7 +130,8 @@ export default class LobbyScene extends Phaser.Scene {
 
         btn.add([iconText, labelText]);
         btn.setSize(100, 100);
-        btn.setInteractive(new Phaser.Geom.Rectangle(-50, -50, 100, 100), Phaser.Geom.Rectangle.Contains);
+        // Larger Hit Area for Nav Buttons
+        btn.setInteractive(new Phaser.Geom.Rectangle(-70, -70, 140, 140), Phaser.Geom.Rectangle.Contains);
         btn.on('pointerdown', onClick);
     }
 }

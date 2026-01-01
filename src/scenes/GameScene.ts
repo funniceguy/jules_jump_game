@@ -379,7 +379,7 @@ export default class GameScene extends Phaser.Scene {
         const btnY = height - 80;
 
         // Left Area (JUMP)
-        const jumpZone = this.add.rectangle(width * 0.25, btnY, width/2 - 20, btnH, 0x2ecc71, 0.8)
+        const jumpZone = this.add.rectangle(width * 0.25, btnY, width/2, btnH, 0x2ecc71, 0.8)
             .setScrollFactor(0).setDepth(20).setInteractive();
         this.add.text(width * 0.25, btnY, 'JUMP', {
             fontFamily: 'Fredoka One', fontSize:'40px'
@@ -390,7 +390,7 @@ export default class GameScene extends Phaser.Scene {
         jumpZone.on('pointerout', () => jumpZone.setAlpha(0.8));
 
         // Right Area (DASH)
-        const dashZone = this.add.rectangle(width * 0.75, btnY, width/2 - 20, btnH, 0x00d2d3, 0.8)
+        const dashZone = this.add.rectangle(width * 0.75, btnY, width/2, btnH, 0x00d2d3, 0.8)
             .setScrollFactor(0).setDepth(20).setInteractive();
         this.add.text(width * 0.75, btnY, 'DASH', {
             fontFamily: 'Fredoka One', fontSize:'40px'
@@ -433,7 +433,8 @@ export default class GameScene extends Phaser.Scene {
         const btnTxt = this.add.text(0, 0, 'EXIT', { fontFamily: 'Fredoka One', fontSize: '30px', color: '#2f3542' }).setOrigin(0.5);
         btn.add([btnBg, btnTxt]);
         btn.setSize(200, 60);
-        btn.setInteractive(new Phaser.Geom.Rectangle(-100, -30, 200, 60), Phaser.Geom.Rectangle.Contains);
+        // Larger Hit Area
+        btn.setInteractive(new Phaser.Geom.Rectangle(-150, -60, 300, 120), Phaser.Geom.Rectangle.Contains);
         btn.on('pointerdown', () => this.scene.start('LobbyScene'));
 
         modal.add([bg, title, score, btn]);
@@ -480,8 +481,12 @@ export default class GameScene extends Phaser.Scene {
         const btnTxt = this.add.text(0, 0, 'NEXT LEVEL', { fontFamily: 'Fredoka One', fontSize: '30px', color: '#fff' }).setOrigin(0.5);
         btn.add([btnBg, btnTxt]);
         btn.setSize(240, 70);
-        btn.setInteractive(new Phaser.Geom.Rectangle(-120, -35, 240, 70), Phaser.Geom.Rectangle.Contains);
-        btn.on('pointerdown', () => this.scene.start('LobbyScene'));
+        // Larger Hit Area
+        btn.setInteractive(new Phaser.Geom.Rectangle(-170, -70, 340, 140), Phaser.Geom.Rectangle.Contains);
+        btn.on('pointerdown', () => {
+             // Explicitly resume physics or just switch scene (switching scene destroys this one anyway)
+             this.scene.start('LobbyScene');
+        });
 
         modal.add([bg, title, score, btn]);
         modal.setScale(0);
