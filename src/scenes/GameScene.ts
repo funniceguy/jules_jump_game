@@ -21,7 +21,7 @@ export default class GameScene extends Phaser.Scene {
     // Configuration
     private readonly platformVerticalDistance = 220;
     private readonly targetScore = 10000;
-    private timeLeft = 180000; // 3 Minutes in ms
+    private timeLeft = 90000; // 1m 30s in ms
 
     // Generation Logic
     private highestY = 0;
@@ -56,7 +56,7 @@ export default class GameScene extends Phaser.Scene {
         this.canDoubleJump = false;
         this.isDashing = false;
         this.dashTimer = 0;
-        this.timeLeft = 180000; // Reset Timer
+        this.timeLeft = 90000; // Reset Timer
 
         // --- Assets ---
         this.createAssets();
@@ -283,13 +283,13 @@ export default class GameScene extends Phaser.Scene {
                 type = forceType;
             } else {
                 const rand = Math.random();
-                // Wood: 60% (0.00 - 0.60)
-                // Rubber: 10% (0.60 - 0.70) - "Jump Platform slightly less"
-                // Electric: 20% (0.70 - 0.90) - "2x Flight"
-                // Plasma: 10% (0.90 - 1.00) - "3x Flight"
-                if (rand < 0.60) type = 'wood';
-                else if (rand < 0.70) type = 'rubber';
-                else if (rand < 0.90) type = 'electric';
+                // Wood: 80% (0.00 - 0.80)
+                // Rubber: 5% (0.80 - 0.85) - "Jump Platform"
+                // Electric: 10% (0.85 - 0.95) - "2x Flight"
+                // Plasma: 5% (0.95 - 1.00) - "3x Flight"
+                if (rand < 0.80) type = 'wood';
+                else if (rand < 0.85) type = 'rubber';
+                else if (rand < 0.95) type = 'electric';
                 else type = 'plasma';
             }
 
@@ -353,13 +353,13 @@ export default class GameScene extends Phaser.Scene {
         // Fish (30%), Milk (25%), Cookie (20%), Flower (15%), Gem (10%)
         const rand = Math.random();
         let itemType = 'item_fish';
-        let value = 100; // All doubled
+        let value = 50;
 
-        if (rand < 0.30) { itemType = 'item_fish'; value = 100; }
-        else if (rand < 0.55) { itemType = 'item_milk'; value = 200; }
-        else if (rand < 0.75) { itemType = 'item_cookie'; value = 300; }
-        else if (rand < 0.90) { itemType = 'item_flower'; value = 400; }
-        else { itemType = 'item_gem'; value = 1000; }
+        if (rand < 0.30) { itemType = 'item_fish'; value = 50; }
+        else if (rand < 0.55) { itemType = 'item_milk'; value = 100; }
+        else if (rand < 0.75) { itemType = 'item_cookie'; value = 150; }
+        else if (rand < 0.90) { itemType = 'item_flower'; value = 200; }
+        else { itemType = 'item_gem'; value = 500; }
 
         let item = this.items.getFirstDead();
         if (!item) {
