@@ -564,40 +564,45 @@ export default class GameScene extends Phaser.Scene {
     private createControls() {
         const { width, height } = this.scale;
 
-        // Button Config
-        const btnRadius = 40;
-        const btnY = height - 80;
-        const jumpX = 80;
-        const dashX = width - 80;
+        // Button Config - Split bottom area
+        const btnHeight = 150;
+        const btnY = height - btnHeight;
 
-        // --- Jump Button ---
-        const jumpBtn = this.add.circle(jumpX, btnY, btnRadius, 0xffffff)
-            .setScrollFactor(0).setDepth(20).setInteractive();
-        const jumpIcon = this.add.text(jumpX, btnY, 'JUMP', {
-            fontSize: '20px', color: '#000', fontStyle: 'bold'
+        // --- Jump Button (Left Half) ---
+        const jumpBtn = this.add.rectangle(0, btnY, width / 2, btnHeight, 0x00ff00, 0.2)
+            .setOrigin(0, 0) // Top-Left of the button area
+            .setScrollFactor(0)
+            .setDepth(20)
+            .setInteractive();
+
+        const jumpText = this.add.text(width * 0.25, btnY + btnHeight / 2, 'JUMP', {
+            fontSize: '40px', color: '#ffffff', fontStyle: 'bold'
         }).setOrigin(0.5).setScrollFactor(0).setDepth(21);
 
-        jumpBtn.on('pointerdown', (p: any) => {
-            // Stop propagation handled by scene check, but good practice to handle logic here
+        jumpBtn.on('pointerdown', () => {
             this.performJump();
-            jumpBtn.setFillStyle(0xdddddd);
+            jumpBtn.setFillStyle(0x00ff00, 0.4); // Highlight
         });
-        jumpBtn.on('pointerup', () => jumpBtn.setFillStyle(0xffffff));
-        jumpBtn.on('pointerout', () => jumpBtn.setFillStyle(0xffffff));
+        jumpBtn.on('pointerup', () => jumpBtn.setFillStyle(0x00ff00, 0.2));
+        jumpBtn.on('pointerout', () => jumpBtn.setFillStyle(0x00ff00, 0.2));
 
-        // --- Dash Button ---
-        const dashBtn = this.add.circle(dashX, btnY, btnRadius, 0xffffff)
-            .setScrollFactor(0).setDepth(20).setInteractive();
-        const dashIcon = this.add.text(dashX, btnY, 'DASH', {
-            fontSize: '20px', color: '#000', fontStyle: 'bold'
+        // --- Dash Button (Right Half) ---
+        const dashBtn = this.add.rectangle(width / 2, btnY, width / 2, btnHeight, 0x00ffff, 0.2)
+            .setOrigin(0, 0)
+            .setScrollFactor(0)
+            .setDepth(20)
+            .setInteractive();
+
+        const dashText = this.add.text(width * 0.75, btnY + btnHeight / 2, 'DASH', {
+            fontSize: '40px', color: '#ffffff', fontStyle: 'bold'
         }).setOrigin(0.5).setScrollFactor(0).setDepth(21);
 
-        dashBtn.on('pointerdown', (p: any) => {
+        dashBtn.on('pointerdown', () => {
             this.performDash();
-            dashBtn.setFillStyle(0xdddddd);
+            dashBtn.setFillStyle(0x00ffff, 0.4);
         });
-        dashBtn.on('pointerup', () => dashBtn.setFillStyle(0xffffff));
-        dashBtn.on('pointerout', () => dashBtn.setFillStyle(0xffffff));
+        dashBtn.on('pointerup', () => dashBtn.setFillStyle(0x00ffff, 0.2));
+        dashBtn.on('pointerout', () => dashBtn.setFillStyle(0x00ffff, 0.2));
     }
 
     private showGameOver() {
