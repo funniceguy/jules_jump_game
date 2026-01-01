@@ -60,7 +60,7 @@ export default class GameScene extends Phaser.Scene {
 
         // Initialize First Floor (Wood)
         this.highestY = height - 100;
-        this.spawnFloor(this.highestY, 1, 'wood');
+        this.spawnFloor(this.highestY, 1, 'wood', true);
 
         // Fill screen
         while (this.highestY > -200) {
@@ -232,7 +232,7 @@ export default class GameScene extends Phaser.Scene {
         }
     }
 
-    private spawnFloor(y: number, forceCount?: number, forceType?: string) {
+    private spawnFloor(y: number, forceCount?: number, forceType?: string, isStartPlatform: boolean = false) {
         const width = this.scale.width;
 
         let count = 1;
@@ -274,12 +274,29 @@ export default class GameScene extends Phaser.Scene {
                 platform.setActive(true).setVisible(true);
             }
 
-            const maxW = Math.min(250, segmentWidth - 20);
-            const w = Phaser.Math.Between(80, maxW);
+            // Width Logic
+            let w = 100;
+            let x = 0;
+
+            if (isStartPlatform) {
+                w = width; // Fill screen
+                x = width / 2;
+            } else {
+                // Max Width = 25% of screen width
+                const maxAllowed = width * 0.25;
+                const maxW = Math.min(maxAllowed, segmentWidth - 20);
+                // Ensure w is at least some size (e.g. 60 or 80), but clamp to maxW
+                const minW = 80;
+                const safeMax = Math.max(minW, maxW); // If maxW < minW, we might have issues, but 720*0.25=180, so 180 > 80. OK.
+
+                w = Phaser.Math.Between(minW, safeMax);
+
+                const minX = i * segmentWidth + w/2 + 10;
+                const maxX = (i + 1) * segmentWidth - w/2 - 10;
+                x = Phaser.Math.Between(minX, maxX);
+            }
+
             const scaleX = w / 100;
-            const minX = i * segmentWidth + w/2 + 10;
-            const maxX = (i + 1) * segmentWidth - w/2 - 10;
-            const x = Phaser.Math.Between(minX, maxX);
 
             platform.enableBody(true, x, y, true, true);
             platform.setScale(scaleX, 1);
